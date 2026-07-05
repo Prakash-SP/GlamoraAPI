@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PeachyGlamora.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ORM + SQLServer -->
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.23" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.20">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Auth: JWT + Google OAuth -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+
+    <!-- Validation -->
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.20" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.20">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Payments: self-hosted UPI intent + QR code (no aggregator required) -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+
+    <!-- Notifications: SMTP email for order confirmations. Swap for MSG91/Twilio's SDK for SMS. -->
+    <PackageReference Include="MailKit" Version="4.17.0" />
+
+    <!-- Media storage -->
+    <PackageReference Include="CloudinaryDotNet" Version="1.26.1" />
+
+    <!-- Background jobs (abandoned cart emails, order status jobs) -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
+
+    <!-- API docs -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.3" />
+
+    <!-- Rate limiting is built into ASP.NET Core 8 (Microsoft.AspNetCore.RateLimiting) -->
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,103 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "E:\\Work\\PG\\PeachyGlamora.Api\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|e:\\work\\pg\\peachyglamora.api\\peachyglamora.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|solutionrelative:peachyglamora.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|e:\\work\\pg\\peachyglamora.api\\peachyglamora.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|solutionrelative:peachyglamora.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|e:\\work\\pg\\peachyglamora.api\\peachyglamora.api\\api_documentation.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|solutionrelative:peachyglamora.api\\api_documentation.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|e:\\work\\pg\\peachyglamora.api\\peachyglamora.api\\services\\upiqrpaymentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|solutionrelative:peachyglamora.api\\services\\upiqrpaymentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|e:\\work\\pg\\peachyglamora.api\\peachyglamora.api\\install.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{E843175A-CBD8-B64E-B278-259F3CC5BF08}|PeachyGlamora.Api\\PeachyGlamora.Api.csproj|solutionrelative:peachyglamora.api\\install.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "UpiQrPaymentService.cs",
+              "DocumentMoniker": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\Services\\UpiQrPaymentService.cs",
+              "RelativeDocumentMoniker": "PeachyGlamora.Api\\Services\\UpiQrPaymentService.cs",
+              "ToolTip": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\Services\\UpiQrPaymentService.cs",
+              "RelativeToolTip": "PeachyGlamora.Api\\Services\\UpiQrPaymentService.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAA5wDAAAAAYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T05:42:31.895Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Program.cs",
+              "DocumentMoniker": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\Program.cs",
+              "RelativeDocumentMoniker": "PeachyGlamora.Api\\Program.cs",
+              "ToolTip": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\Program.cs",
+              "RelativeToolTip": "PeachyGlamora.Api\\Program.cs",
+              "ViewState": "AgIAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T05:42:22.57Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "INSTALL.md",
+              "DocumentMoniker": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\INSTALL.md",
+              "RelativeDocumentMoniker": "PeachyGlamora.Api\\INSTALL.md",
+              "ToolTip": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\INSTALL.md",
+              "RelativeToolTip": "PeachyGlamora.Api\\INSTALL.md",
+              "ViewState": "AgIAACcAAAAAAAAAAAAAAD4AAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-07-03T05:18:40.838Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "API_DOCUMENTATION.md",
+              "DocumentMoniker": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\API_DOCUMENTATION.md",
+              "RelativeDocumentMoniker": "PeachyGlamora.Api\\API_DOCUMENTATION.md",
+              "ToolTip": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\API_DOCUMENTATION.md",
+              "RelativeToolTip": "PeachyGlamora.Api\\API_DOCUMENTATION.md",
+              "ViewState": "AgIAAN4CAAAAAAAAAAAAAOwAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-07-03T05:17:59.111Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "PeachyGlamora.Api\\appsettings.json",
+              "ToolTip": "E:\\Work\\PG\\PeachyGlamora.Api\\PeachyGlamora.Api\\appsettings.json",
+              "RelativeToolTip": "PeachyGlamora.Api\\appsettings.json",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAewBMAAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-07-02T20:00:06.987Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
