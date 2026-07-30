@@ -135,8 +135,8 @@ Public. Powers the mega-menu / homepage category circles.
 [
   {
     "id": 2,
-    "name": "Necklace Sets",
-    "slug": "necklace-sets",
+    "name": "Necklaces",
+    "slug": "necklaces",
     "imageUrl": "https://res.cloudinary.com/.../necklaces.jpg",
     "subCategories": [
       { "id": 12, "name": "Chokers", "slug": "chokers" },
@@ -157,7 +157,7 @@ Public. Backs the Collection page — every filter/sort UI control maps to a que
 
 | Param | Type | Notes |
 |---|---|---|
-| categorySlug | string | e.g. `necklace-sets` |
+| categorySlug | string | e.g. `necklaces` |
 | minPrice, maxPrice | decimal | |
 | colors | string[] (repeat param, e.g. `colors=RoseGold&colors=Gold`) | |
 | materials | string[] | values from `ProductMaterial` enum: `RoseGoldPlated, GoldPlated, Kundan, Pearl, AmericanDiamond, Oxidised, Beaded` |
@@ -170,7 +170,7 @@ Public. Backs the Collection page — every filter/sort UI control maps to a que
 
 **Example request**
 ```
-GET /api/products?categorySlug=necklace-sets&occasions=Bridal&sortBy=priceLow&page=1&pageSize=12
+GET /api/products?categorySlug=necklaces&occasions=Bridal&sortBy=priceLow&page=1&pageSize=12
 ```
 
 **Response 200 (`PagedResult<ProductListItemDto>`)**
@@ -179,9 +179,9 @@ GET /api/products?categorySlug=necklace-sets&occasions=Bridal&sortBy=priceLow&pa
   "items": [
     {
       "id": 101,
-      "name": "Rosette Cascade Bridal Necklace Set",
-      "slug": "rosette-cascade-bridal-necklace-set",
-      "categoryName": "Necklace Sets",
+      "name": "Rosette Cascade Bridal Necklaces",
+      "slug": "rosette-cascade-bridal-necklaces",
+      "categoryName": "Necklaces",
       "price": 2149.00,
       "compareAtPrice": 3499.00,
       "primaryImageUrl": "https://res.cloudinary.com/.../rosette.jpg",
@@ -206,8 +206,8 @@ Public. Backs the Product Detail page.
 ```json
 {
   "id": 101,
-  "name": "Rosette Cascade Bridal Necklace Set",
-  "slug": "rosette-cascade-bridal-necklace-set",
+  "name": "Rosette Cascade Bridal Necklaces",
+  "slug": "rosette-cascade-bridal-necklaces",
   "description": "Rose gold plated brass base with kundan and pearl detailing...",
   "sku": "PG-NKS-1042-RG",
   "price": 2149.00,
@@ -320,7 +320,7 @@ Public. Returns only **answered** questions.
 ### GET `/api/wishlist`
 ```json
 [
-  { "id": 101, "name": "Rosette Cascade Bridal Necklace Set", "slug": "rosette-cascade-...", "imageUrl": "https://.../1.jpg" }
+  { "id": 101, "name": "Rosette Cascade Bridal Necklaces", "slug": "rosette-cascade-...", "imageUrl": "https://.../1.jpg" }
 ]
 ```
 
@@ -348,7 +348,7 @@ Public (guest or logged-in). `coupon` query param optional — re-applies a prev
     {
       "id": 12,
       "productVariantId": 501,
-      "productName": "Rosette Cascade Bridal Necklace Set",
+      "productName": "Rosette Cascade Bridal Necklaces",
       "imageUrl": "https://.../1.jpg",
       "color": "Rose Gold",
       "size": "16\"",
@@ -475,7 +475,7 @@ Order tracking detail with full status timeline.
   "orderNumber": "PG-2607024821",
   "status": "Confirmed",
   "totalAmount": 1770.77,
-  "items": [ { "id": 90, "productNameSnapshot": "Rosette Cascade Bridal Necklace Set", "unitPriceSnapshot": 2149.00, "quantity": 1 } ],
+  "items": [ { "id": 90, "productNameSnapshot": "Rosette Cascade Bridal Necklaces", "unitPriceSnapshot": 2149.00, "quantity": 1 } ],
   "statusHistory": [
     { "status": "Pending", "note": "Order placed", "changedAt": "2026-07-02T10:00:00Z" },
     { "status": "Confirmed", "note": "UPI payment verified by staff", "changedAt": "2026-07-02T10:20:00Z" }
@@ -667,7 +667,7 @@ Public. Returns raw `BlogCategory[]`: `[{ "id": 1, "name": "Styling Tips", "slug
 **GET `/api/admin/products?page=1&pageSize=20&search=necklace`**
 ```json
 { "total": 340, "page": 1, "pageSize": 20,
-  "items": [ { "id": 101, "name": "Rosette Cascade...", "slug": "...", "isActive": true, "categoryName": "Necklace Sets", "totalStock": 9, "minPrice": 2149.00 } ] }
+  "items": [ { "id": 101, "name": "Rosette Cascade...", "slug": "...", "isActive": true, "categoryName": "Necklaces", "totalStock": 9, "minPrice": 2149.00 } ] }
 ```
 
 **GET `/api/admin/products/{id}`** — full `Product` entity incl. `variants[]`, `images[]`.
@@ -904,7 +904,7 @@ Public. Returns raw `BlogCategory[]`: `[{ "id": 1, "name": "Styling Tips", "slug
 
 **GET `/api/admin/analytics/top-products?take=10`**
 ```json
-[ { "productName": "Rosette Cascade Bridal Necklace Set", "unitsSold": 58, "revenue": 124642.00 } ]
+[ { "productName": "Rosette Cascade Bridal Necklaces", "unitsSold": 58, "revenue": 124642.00 } ]
 ```
 
 **GET `/api/admin/analytics/revenue-by-day?days=14`**

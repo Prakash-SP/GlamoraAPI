@@ -178,6 +178,9 @@ namespace PeachyGlamora.Api.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Landmark")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Line1")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -336,6 +339,90 @@ namespace PeachyGlamora.Api.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BankAccount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountHolderName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AccountNumberEncrypted")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AccountNumberLast4")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("nvarchar(4)");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BranchName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IfscCode")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("BankAccounts");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BankAccountRevealLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BankAccountId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RevealedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RevealedByAdminUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BankAccountId");
+
+                    b.ToTable("BankAccountRevealLogs");
+                });
+
             modelBuilder.Entity("PeachyGlamora.Api.Models.BlogCategory", b =>
                 {
                     b.Property<int>("Id")
@@ -412,6 +499,175 @@ namespace PeachyGlamora.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("BlogPosts");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BulkImportJob", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DuplicateRecords")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FailedRecords")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ImportedRecords")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InvalidRecords")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalRecords")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploadedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UploadedByUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ValidRecords")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WarningRecords")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadedById");
+
+                    b.ToTable("BulkImportJobs");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BulkImportRow", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("BasePrice")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CategoryName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Color")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("CompareAtPrice")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int?>("CreatedProductId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Errors")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Finish")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HsnCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("HsnTaxRateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImportError")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ImportStatus")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsBestSeller")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDuplicate")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNewArrival")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTrending")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("JobId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Material")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Occasion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ShortDescription")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Size")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Sku")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StockQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Warnings")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.ToTable("BulkImportRows");
                 });
 
             modelBuilder.Entity("PeachyGlamora.Api.Models.CartItem", b =>
@@ -500,8 +756,8 @@ namespace PeachyGlamora.Api.Migrations
                             Id = 2,
                             DisplayOrder = 2,
                             IsActive = true,
-                            Name = "Necklace Sets",
-                            Slug = "necklace-sets"
+                            Name = "Pendants",
+                            Slug = "pendants"
                         },
                         new
                         {
@@ -558,6 +814,9 @@ namespace PeachyGlamora.Api.Migrations
                     b.Property<decimal?>("MinOrderValue")
                         .HasColumnType("decimal(12,2)");
 
+                    b.Property<int>("ScopeType")
+                        .HasColumnType("int");
+
                     b.Property<int>("TimesUsed")
                         .HasColumnType("int");
 
@@ -585,6 +844,84 @@ namespace PeachyGlamora.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Coupons");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.CouponCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CouponId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("CouponId", "CategoryId")
+                        .IsUnique();
+
+                    b.ToTable("CouponCategories");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.CouponProduct", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CouponId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("CouponId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("CouponProducts");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.CouponUsage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CouponId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("CouponId", "UserId");
+
+                    b.ToTable("CouponUsages");
                 });
 
             modelBuilder.Entity("PeachyGlamora.Api.Models.GiftCard", b =>
@@ -617,6 +954,76 @@ namespace PeachyGlamora.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("GiftCards");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.HsnTaxRate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HsnCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("TaxRatePercent")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HsnCode")
+                        .IsUnique();
+
+                    b.ToTable("HsnTaxRates");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 7, 12, 8, 19, 41, 0, DateTimeKind.Utc),
+                            Description = "Imitation jewellery of base metal, whether or not plated",
+                            HsnCode = "711711",
+                            IsActive = true,
+                            TaxRatePercent = 3.00m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 7, 12, 8, 19, 41, 0, DateTimeKind.Utc),
+                            Description = "Other imitation jewellery",
+                            HsnCode = "711790",
+                            IsActive = true,
+                            TaxRatePercent = 3.00m
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 7, 12, 8, 19, 41, 0, DateTimeKind.Utc),
+                            Description = "Fashion accessories of plastics",
+                            HsnCode = "391926",
+                            IsActive = true,
+                            TaxRatePercent = 12.00m
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2026, 7, 12, 8, 19, 41, 0, DateTimeKind.Utc),
+                            Description = "Imitation jewellery of base metal, gold/silver plated",
+                            HsnCode = "711719",
+                            IsActive = true,
+                            TaxRatePercent = 3.00m
+                        });
                 });
 
             modelBuilder.Entity("PeachyGlamora.Api.Models.Order", b =>
@@ -690,6 +1097,10 @@ namespace PeachyGlamora.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("HsnCodeSnapshot")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
 
@@ -702,6 +1113,12 @@ namespace PeachyGlamora.Api.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("TaxAmountSnapshot")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<decimal>("TaxRatePercentSnapshot")
+                        .HasColumnType("decimal(12,2)");
 
                     b.Property<decimal>("UnitPriceSnapshot")
                         .HasColumnType("decimal(12,2)");
@@ -816,6 +1233,41 @@ namespace PeachyGlamora.Api.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("PeachyGlamora.Api.Models.PincodePost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("OfficeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Pincode")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<string>("StateName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Pincode");
+
+                    b.ToTable("PincodePosts");
+                });
+
             modelBuilder.Entity("PeachyGlamora.Api.Models.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -840,6 +1292,13 @@ namespace PeachyGlamora.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Finish")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("HsnTaxRateId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -855,8 +1314,10 @@ namespace PeachyGlamora.Api.Migrations
                     b.Property<bool>("IsTrending")
                         .HasColumnType("bit");
 
-                    b.Property<int>("Material")
-                        .HasColumnType("int");
+                    b.Property<string>("Material")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("MetaDescription")
                         .HasColumnType("nvarchar(max)");
@@ -868,8 +1329,10 @@ namespace PeachyGlamora.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Occasion")
-                        .HasColumnType("int");
+                    b.Property<string>("Occasion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("ShortDescription")
                         .IsRequired()
@@ -885,6 +1348,8 @@ namespace PeachyGlamora.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("HsnTaxRateId");
 
                     b.HasIndex("Slug")
                         .IsUnique();
@@ -1169,6 +1634,42 @@ namespace PeachyGlamora.Api.Migrations
                     b.ToTable("SupportTicketReplies");
                 });
 
+            modelBuilder.Entity("PeachyGlamora.Api.Models.UpiAccount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UpiId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("UpiAccounts");
+                });
+
             modelBuilder.Entity("PeachyGlamora.Api.Models.WishlistItem", b =>
                 {
                     b.Property<int>("Id")
@@ -1258,6 +1759,28 @@ namespace PeachyGlamora.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BankAccount", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BankAccountRevealLog", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.BankAccount", "BankAccount")
+                        .WithMany()
+                        .HasForeignKey("BankAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BankAccount");
+                });
+
             modelBuilder.Entity("PeachyGlamora.Api.Models.BlogPost", b =>
                 {
                     b.HasOne("PeachyGlamora.Api.Models.BlogCategory", "BlogCategory")
@@ -1267,6 +1790,26 @@ namespace PeachyGlamora.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("BlogCategory");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BulkImportJob", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.ApplicationUser", "UploadedBy")
+                        .WithMany()
+                        .HasForeignKey("UploadedById");
+
+                    b.Navigation("UploadedBy");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BulkImportRow", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.BulkImportJob", "Job")
+                        .WithMany("Rows")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
                 });
 
             modelBuilder.Entity("PeachyGlamora.Api.Models.CartItem", b =>
@@ -1294,6 +1837,63 @@ namespace PeachyGlamora.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ParentCategory");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.CouponCategory", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PeachyGlamora.Api.Models.Coupon", "Coupon")
+                        .WithMany("CouponCategories")
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Coupon");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.CouponProduct", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.Coupon", "Coupon")
+                        .WithMany("CouponProducts")
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PeachyGlamora.Api.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Coupon");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.CouponUsage", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.Coupon", "Coupon")
+                        .WithMany()
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PeachyGlamora.Api.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Coupon");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PeachyGlamora.Api.Models.Order", b =>
@@ -1370,7 +1970,15 @@ namespace PeachyGlamora.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PeachyGlamora.Api.Models.HsnTaxRate", "HsnTaxRate")
+                        .WithMany()
+                        .HasForeignKey("HsnTaxRateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Category");
+
+                    b.Navigation("HsnTaxRate");
                 });
 
             modelBuilder.Entity("PeachyGlamora.Api.Models.ProductImage", b =>
@@ -1467,6 +2075,17 @@ namespace PeachyGlamora.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PeachyGlamora.Api.Models.UpiAccount", b =>
+                {
+                    b.HasOne("PeachyGlamora.Api.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PeachyGlamora.Api.Models.WishlistItem", b =>
                 {
                     b.HasOne("PeachyGlamora.Api.Models.Product", "Product")
@@ -1504,11 +2123,23 @@ namespace PeachyGlamora.Api.Migrations
                     b.Navigation("Posts");
                 });
 
+            modelBuilder.Entity("PeachyGlamora.Api.Models.BulkImportJob", b =>
+                {
+                    b.Navigation("Rows");
+                });
+
             modelBuilder.Entity("PeachyGlamora.Api.Models.Category", b =>
                 {
                     b.Navigation("Products");
 
                     b.Navigation("SubCategories");
+                });
+
+            modelBuilder.Entity("PeachyGlamora.Api.Models.Coupon", b =>
+                {
+                    b.Navigation("CouponCategories");
+
+                    b.Navigation("CouponProducts");
                 });
 
             modelBuilder.Entity("PeachyGlamora.Api.Models.Order", b =>

@@ -503,8 +503,8 @@ namespace PeachyGlamora.Api.Migrations
                             Id = 2,
                             DisplayOrder = 2,
                             IsActive = true,
-                            Name = "Necklace Sets",
-                            Slug = "necklace-sets"
+                            Name = "Pendants",
+                            Slug = "pendants"
                         },
                         new
                         {

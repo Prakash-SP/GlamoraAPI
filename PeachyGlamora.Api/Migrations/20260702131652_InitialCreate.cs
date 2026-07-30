@@ -752,7 +752,7 @@ namespace PeachyGlamora.Api.Migrations
                 values: new object[,]
                 {
                     { 1, null, 1, null, true, "Earrings", null, "earrings" },
-                    { 2, null, 2, null, true, "Necklace Sets", null, "necklace-sets" },
+                    { 2, null, 2, null, true, "Pendants", null, "pendants" },
                     { 3, null, 3, null, true, "Bangles", null, "bangles" },
                     { 4, null, 4, null, true, "Rings", null, "rings" },
                     { 5, null, 5, null, true, "Bracelets", null, "bracelets" },

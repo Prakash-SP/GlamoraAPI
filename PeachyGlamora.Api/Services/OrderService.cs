@@ -48,6 +48,22 @@ public class OrderService : IOrderService
 
         var summary = await _cart.GetCartAsync(userId, null, req.CouponCode);
 
+        // CartSummaryDto only carries the aggregate DiscountAmount, not which
+        // products the coupon actually applies to — so re-resolve the eligible
+        // set here (same as CartService.GetCartAsync does) to prorate each
+        // line item's tax correctly instead of spreading the discount over
+        // items the coupon doesn't cover.
+        var eligibleProductIds = new HashSet<int>();
+        if (!string.IsNullOrWhiteSpace(req.CouponCode))
+        {
+            var couponResult = await _cart.ValidateCouponAsync(req.CouponCode, userId, cartItems);
+            if (couponResult.Valid) eligibleProductIds = couponResult.EligibleProductIds;
+        }
+
+        var eligibleSubtotal = cartItems
+            .Where(c => eligibleProductIds.Contains(c.ProductVariant.ProductId))
+            .Sum(c => c.ProductVariant.PriceOverride * c.Quantity);
+
         var order = new Order
         {
             OrderNumber = $"PG-{DateTime.UtcNow:yyMMdd}{Random.Shared.Next(1000, 9999)}",
@@ -66,12 +82,19 @@ public class OrderService : IOrderService
 
         foreach (var item in cartItems)
         {
+            var itemTax = _cart.CalculateItemTax(
+                item.ProductVariant, item.Quantity, eligibleSubtotal, summary.DiscountAmount,
+                eligibleProductIds.Contains(item.ProductVariant.ProductId));
+
             order.Items.Add(new OrderItem
             {
                 ProductVariantId = item.ProductVariantId,
                 ProductNameSnapshot = item.ProductVariant.Product.Name,
                 UnitPriceSnapshot = item.ProductVariant.PriceOverride,
-                Quantity = item.Quantity
+                Quantity = item.Quantity,
+                HsnCodeSnapshot = item.ProductVariant.Product.HsnTaxRate.HsnCode,
+                TaxRatePercentSnapshot = item.ProductVariant.Product.HsnTaxRate.TaxRatePercent,
+                TaxAmountSnapshot = itemTax,
             });
             item.ProductVariant.StockQuantity -= item.Quantity; // reserve stock immediately
         }

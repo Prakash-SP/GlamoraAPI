@@ -13,6 +13,8 @@ public interface IAuthService
     Task<(bool success, string? error, AuthResponse? result)> LoginWithGoogleAsync(string email, string fullName, string googleSubjectId);
     Task<bool> RequestOtpAsync(string phoneNumber);
     Task<(bool success, string? error, AuthResponse? result)> VerifyOtpAsync(string phoneNumber, string code);
+    Task RequestPasswordResetAsync(string email);
+    Task<(bool success, string? error)> ResetPasswordAsync(string email, string token, string newPassword);
 }
 
 public class AuthService : IAuthService
@@ -21,17 +23,30 @@ public class AuthService : IAuthService
     private readonly IJwtService _jwt;
     private readonly AppDbContext _db;
     private readonly ISmsService _sms;
+    private readonly IEmailService _email;
+    private readonly IConfiguration _config;
 
-    public AuthService(UserManager<ApplicationUser> userManager, IJwtService jwt, AppDbContext db, ISmsService sms)
+    public AuthService(
+        UserManager<ApplicationUser> userManager,
+        IJwtService jwt,
+        AppDbContext db,
+        ISmsService sms,
+        IEmailService email,
+        IConfiguration config)
     {
         _userManager = userManager;
         _jwt = jwt;
         _db = db;
         _sms = sms;
+        _email = email;
+        _config = config;
     }
 
     public async Task<(bool, string?, AuthResponse?)> RegisterAsync(RegisterRequest req)
     {
+        var validationError = ValidateRegisterRequest(req);
+        if (validationError != null) return (false, validationError, null);
+
         var existing = await _userManager.FindByEmailAsync(req.Email);
         if (existing != null) return (false, "An account with this email already exists.", null);
 
@@ -41,6 +56,7 @@ public class AuthService : IAuthService
             Email = req.Email,
             FullName = req.FullName,
             PhoneNumber = req.Phone,
+            DateOfBirth = req.DateOfBirth,
             AuthProvider = "Email",
             ReferralCode = GenerateReferralCode(req.FullName)
         };
@@ -52,6 +68,56 @@ public class AuthService : IAuthService
         await _userManager.AddToRoleAsync(user, "Customer");
         var (token, expires) = _jwt.GenerateToken(user, new[] { "Customer" });
         return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires));
+    }
+
+    // Mirrors the frontend's register-form checks, but this is the copy that actually
+    // matters — anyone can call this endpoint directly (Postman/curl) and skip the
+    // Angular form entirely, so nothing here can rely on client-side validation alone.
+    // Note: password *complexity* (length, digits, etc.) is intentionally left to
+    // UserManager.CreateAsync below, which already enforces Identity's configured
+    // PasswordOptions — duplicating that here would just risk the two drifting apart.
+    private static string? ValidateRegisterRequest(RegisterRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.FullName))
+            return "Please enter your full name.";
+
+        if (string.IsNullOrWhiteSpace(req.Email) || !IsValidEmail(req.Email))
+            return "Please enter a valid email address.";
+
+        if (string.IsNullOrWhiteSpace(req.Phone) || !System.Text.RegularExpressions.Regex.IsMatch(req.Phone, @"^\d{10}$"))
+            return "Please enter a valid 10-digit mobile number.";
+
+        if (string.IsNullOrEmpty(req.Password))
+            return "Please enter a password.";
+
+        if (!IsAtLeast14(req.DateOfBirth))
+            return "You must be at least 14 years old to create an account.";
+
+        return null;
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsAtLeast14(DateTime dateOfBirth)
+    {
+        var today = DateTime.UtcNow.Date;
+        var dob = dateOfBirth.Date;
+        if (dob > today) return false; // future DOB is never valid regardless of age math
+
+        var age = today.Year - dob.Year;
+        if (dob > today.AddYears(-age)) age--; // birthday hasn't occurred yet this year
+        return age >= 14;
     }
 
     public async Task<(bool, string?, AuthResponse?)> LoginAsync(LoginRequest req)
@@ -135,6 +201,61 @@ public class AuthService : IAuthService
         var roles = await _userManager.GetRolesAsync(user);
         var (token, expires) = _jwt.GenerateToken(user, roles);
         return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires));
+    }
+
+    // Deliberately returns nothing the caller can distinguish on — the
+    // controller always sends back the same generic message regardless of
+    // what happens in here. If the email doesn't exist, or belongs to a
+    // Google/OTP account (no password to reset in the first place), this
+    // just no-ops and no email goes out. Only a real Email/password account
+    // actually gets a reset link.
+    public async Task RequestPasswordResetAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null || user.AuthProvider != "Email") return;
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+        // Identity's reset tokens contain characters (+, /, =) that aren't
+        // safe unescaped in a URL query string — must percent-encode both
+        // the token and the email before building the link.
+        var encodedToken = Uri.EscapeDataString(token);
+        var encodedEmail = Uri.EscapeDataString(email);
+
+        // Falls back to local dev if not configured — set Frontend:BaseUrl
+        // in appsettings.Production.json to the real deployed frontend URL.
+        var frontendBaseUrl = _config["Frontend:BaseUrl"] ?? "http://localhost:4200";
+        var resetLink = $"{frontendBaseUrl}/reset-password?email={encodedEmail}&token={encodedToken}";
+
+        var html = $"""
+            <p>Hi {user.FullName},</p>
+            <p>We received a request to reset your Peachy Glamora password. Click the link below to choose a new one:</p>
+            <p><a href="{resetLink}">Reset your password</a></p>
+            <p>This link can only be used once. If you didn't request this, you can safely ignore this email — your password won't change.</p>
+            """;
+
+        await _email.SendAsync(email, "Reset your Peachy Glamora password", html);
+    }
+
+    public async Task<(bool, string?)> ResetPasswordAsync(string email, string token, string newPassword)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+            return (false, "This reset link is invalid or has expired. Please request a new one.");
+
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+        {
+            // Identity's own ResetPasswordAsync rejects an already-used or
+            // expired token with an "InvalidToken" error — surfaced here in
+            // plain language rather than the raw Identity error text.
+            var isTokenError = result.Errors.Any(e => e.Code == "InvalidToken");
+            return (false, isTokenError
+                ? "This reset link is invalid or has expired. Please request a new one."
+                : string.Join("; ", result.Errors.Select(e => e.Description)));
+        }
+
+        return (true, null);
     }
 
     private static string GenerateReferralCode(string seed) =>

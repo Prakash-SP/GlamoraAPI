@@ -41,7 +41,7 @@ dotnet ef database update
 ```
 
 This creates all tables (Identity + catalog + orders + blog) and seeds the six top-level
-categories (Earrings, Necklace Sets, Bangles, Rings, Bracelets, Combo Sets).
+categories (Earrings, Necklaces, Bangles, Rings, Bracelets, Combo Sets).
 
 ## 4. Run
 

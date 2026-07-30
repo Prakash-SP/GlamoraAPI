@@ -14,8 +14,14 @@ namespace PeachyGlamora.Api.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orders;
+    private readonly IInvoicePdfService _invoicePdf;
     private readonly AppDbContext _db;
-    public OrdersController(IOrderService orders, AppDbContext db) { _orders = orders; _db = db; }
+    public OrdersController(IOrderService orders, IInvoicePdfService invoicePdf, AppDbContext db)
+    {
+        _orders = orders;
+        _invoicePdf = invoicePdf;
+        _db = db;
+    }
 
     private string UserId => User.FindFirst("sub")!.Value;
 
@@ -48,29 +54,117 @@ public class OrdersController : ControllerBase
     public async Task<IActionResult> GetOrder(string orderNumber)
     {
         var order = await _db.Orders
-            .Include(o => o.Items)
-            .Include(o => o.StatusHistory.OrderBy(h => h.ChangedAt))
-            .Include(o => o.ShippingAddress)
-            .Include(o => o.Payment)
-            .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber && o.UserId == UserId);
+            .Where(o => o.OrderNumber == orderNumber && o.UserId == UserId)
+            .Select(o => new
+            {
+                o.Id,
+                o.OrderNumber,
+                o.Status,
+                o.CreatedAt,
+                o.Subtotal,
+                o.DiscountAmount,
+                o.TaxAmount,
+                o.ShippingAmount,
+                o.TotalAmount,
+                o.CouponCode,
+                Items = o.Items.Select(i => new
+                {
+                    i.Id,
+                    i.ProductNameSnapshot,
+                    i.UnitPriceSnapshot,
+                    i.Quantity
+                }),
+                StatusHistory = o.StatusHistory.OrderBy(h => h.ChangedAt).Select(h => new
+                {
+                    h.Status,
+                    h.Note,
+                    h.ChangedAt
+                }),
+                ShippingAddress = new
+                {
+                    o.ShippingAddress.FullName,
+                    o.ShippingAddress.Phone,
+                    o.ShippingAddress.Line1,
+                    o.ShippingAddress.Line2,
+                    o.ShippingAddress.City,
+                    o.ShippingAddress.State,
+                    o.ShippingAddress.Pincode
+                },
+                Payment = o.Payment == null ? null : new
+                {
+                    o.Payment.Method,
+                    o.Payment.Status,
+                    o.Payment.Amount
+                },
+            })
+            .FirstOrDefaultAsync();
 
         return order == null ? NotFound() : Ok(order);
+    }
+
+    // Streams the invoice as a downloadable PDF. Data is fetched independently
+    // by InvoicePdfService (its own projected query, scoped to this user) —
+    // not reusing GetOrder's projection, since the two shapes diverge (PDF
+    // needs billing name/email + full address block, the JSON view doesn't).
+    [HttpGet("{orderNumber}/invoice/pdf")]
+    public async Task<IActionResult> DownloadInvoicePdf(string orderNumber)
+    {
+        var pdfBytes = await _invoicePdf.GenerateInvoicePdfAsync(orderNumber, UserId);
+        if (pdfBytes == null) return NotFound();
+        return File(pdfBytes, "application/pdf", $"invoice-{orderNumber}.pdf");
+    }
+
+    [HttpGet("{orderNumber}/cancellation-preview")]
+    public async Task<IActionResult> PreviewCancellation(string orderNumber)
+    {
+        var order = await _db.Orders.Include(o => o.Payment)
+            .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber && o.UserId == UserId);
+        if (order == null) return NotFound();
+
+        if (order.Status is Models.OrderStatus.Shipped or Models.OrderStatus.OutForDelivery or Models.OrderStatus.Delivered
+            or Models.OrderStatus.Cancelled or Models.OrderStatus.Returned or Models.OrderStatus.RefundInitiated or Models.OrderStatus.Refunded)
+            return BadRequest(new { error = "This order can no longer be cancelled — it has already shipped. Please request a return instead." });
+
+        var preview = OrderCancellationCalculator.Calculate(order);
+        return Ok(new
+        {
+            originalAmount = preview.OriginalAmount,
+            shippingDeduction = preview.ShippingDeduction,
+            refundAmount = preview.RefundAmount,
+            paymentReceived = preview.PaymentReceived,
+            deductionReason = preview.DeductionReason,
+        });
     }
 
     [HttpPost("{orderNumber}/cancel")]
     public async Task<IActionResult> CancelOrder(string orderNumber)
     {
         var order = await _db.Orders.Include(o => o.Items).ThenInclude(i => i.ProductVariant)
+            .Include(o => o.Payment)
             .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber && o.UserId == UserId);
         if (order == null) return NotFound();
-        if (order.Status is Models.OrderStatus.Shipped or Models.OrderStatus.Delivered)
+
+        if (order.Status is Models.OrderStatus.Shipped or Models.OrderStatus.OutForDelivery or Models.OrderStatus.Delivered)
             return BadRequest(new { error = "This order can no longer be cancelled — it has already shipped. Please request a return instead." });
+
+        var preview = OrderCancellationCalculator.Calculate(order);
 
         order.Status = Models.OrderStatus.Cancelled;
         foreach (var item in order.Items) item.ProductVariant.StockQuantity += item.Quantity; // release stock
-        order.StatusHistory.Add(new Models.OrderStatusHistory { Status = Models.OrderStatus.Cancelled, Note = "Cancelled by customer" });
+
+        order.StatusHistory.Add(new Models.OrderStatusHistory
+        {
+            Status = Models.OrderStatus.Cancelled,
+            Note = preview.PaymentReceived
+                ? $"Cancelled by customer. Refund of ₹{preview.RefundAmount:0.00} initiated."
+                : "Cancelled by customer. No payment had been received, so no refund is due.",
+        });
+
+        if (order.Payment != null && preview.PaymentReceived)
+            order.Payment.Status = Models.PaymentStatus.Refunded;
+
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Order cancelled." });
+        return Ok(new { message = "Order cancelled.", refundAmount = preview.RefundAmount });
     }
 }
 

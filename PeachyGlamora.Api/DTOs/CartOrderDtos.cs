@@ -7,7 +7,8 @@ public record CartItemDto(int Id, int ProductVariantId, string ProductName, stri
     string? Color, string? Size, decimal UnitPrice, int Quantity, int AvailableStock);
 
 public record CartSummaryDto(List<CartItemDto> Items, decimal Subtotal, decimal DiscountAmount,
-    decimal EstimatedTax, decimal ShippingEstimate, decimal Total, string? AppliedCouponCode);
+    decimal EstimatedTax, decimal ShippingEstimate, decimal Total, string? AppliedCouponCode,
+    string? CouponError);
 
 public record ApplyCouponRequest(string Code);
 

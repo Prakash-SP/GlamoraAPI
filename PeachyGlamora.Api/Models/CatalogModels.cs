@@ -1,6 +1,6 @@
 namespace PeachyGlamora.Api.Models;
 
-/// <summary>Product category, self-referencing for subcategories (e.g. Necklaces → Chokers).</summary>
+/// <summary>Product category, self-referencing for subcategories (e.g. Necklaces → Pendants).</summary>
 public class Category
 {
     public int Id { get; set; }
@@ -16,8 +16,10 @@ public class Category
     public int DisplayOrder { get; set; }
 }
 
-public enum ProductOccasion { Bridal, Party, Office, Daily, Festive }
-public enum ProductMaterial { RoseGoldPlated, GoldPlated, Kundan, Pearl, AmericanDiamond, Oxidised, Beaded }
+// ProductOccasion / ProductMaterial enums REMOVED — Occasion and Material are now
+// free-text strings so admins can type/import any value without a code change.
+// (Search the solution for both names before building — anything still referencing
+// them, e.g. a Collection-page filter, needs updating to plain strings too.)
 
 /// <summary>The sellable product. Price/stock live on ProductVariant so a product can have
 /// multiple colours / sizes, each with its own SKU and inventory count.</summary>
@@ -32,12 +34,19 @@ public class Product
     public int CategoryId { get; set; }
     public Category Category { get; set; } = default!;
 
-    public ProductOccasion Occasion { get; set; }
-    public ProductMaterial Material { get; set; }
+    public string Occasion { get; set; } = default!;
+    public string Material { get; set; } = default!;
+
+    // Free-text finish description, e.g. "Premium Alloy, High-Polish Gold-Tone Finish".
+    // Nullable — not every product needs one.
+    public string? Finish { get; set; }
 
     public decimal BasePrice { get; set; }
     public decimal? CompareAtPrice { get; set; }   // "was" price, for showing % off
     public decimal TaxRatePercent { get; set; } = 3m; // GST slab for artificial jewellery
+
+    public int HsnTaxRateId { get; set; }
+    public HsnTaxRate HsnTaxRate { get; set; } = default!;
 
     public bool IsNewArrival { get; set; }
     public bool IsBestSeller { get; set; }

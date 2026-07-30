@@ -47,10 +47,13 @@ public class CartController : ControllerBase
     [HttpPost("coupon")]
     public async Task<IActionResult> ApplyCoupon(ApplyCouponRequest req)
     {
-        var cartSummary = await _cart.GetCartAsync(UserId, GuestCartId);
-        var (valid, error, _) = await _cart.ValidateCouponAsync(req.Code, UserId, cartSummary.Subtotal);
-        if (!valid) return BadRequest(new { error });
-        return Ok(await _cart.GetCartAsync(UserId, GuestCartId, req.Code));
+        // GetCartAsync already runs ValidateCouponAsync internally (it needs the
+        // actual CartItem entities with ProductVariant/Category included, which
+        // aren't available here) and surfaces the result as CouponError on the
+        // summary — so just read that instead of re-validating in the controller.
+        var cartSummary = await _cart.GetCartAsync(UserId, GuestCartId, req.Code);
+        if (cartSummary.CouponError != null) return BadRequest(new { error = cartSummary.CouponError });
+        return Ok(cartSummary);
     }
 
     // Simple pincode serviceability check for the delivery-estimate box on the PDP/cart.

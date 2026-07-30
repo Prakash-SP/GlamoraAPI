@@ -35,7 +35,7 @@ public class SmtpEmailService : IEmailService
         {
             using var client = new SmtpClient();
             await client.ConnectAsync(_config["Smtp:Host"], int.Parse(_config["Smtp:Port"] ?? "587"), SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(_config["Smtp:User"], _config["Smtp:Password"]);
+            await client.AuthenticateAsync(_config["Smtp:Username"], _config["Smtp:Password"]);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
         }

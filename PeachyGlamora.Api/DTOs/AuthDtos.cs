@@ -1,6 +1,6 @@
 namespace PeachyGlamora.Api.DTOs;
 
-public record RegisterRequest(string FullName, string Email, string Password, string? Phone);
+public record RegisterRequest(string FullName, string Email, string Password, string Phone, DateTime DateOfBirth);
 public record LoginRequest(string Email, string Password);
 public record GoogleLoginRequest(string IdToken); // ID token from Google Sign-In on the frontend
 public record RequestOtpRequest(string PhoneNumber);

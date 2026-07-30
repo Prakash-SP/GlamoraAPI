@@ -15,6 +15,7 @@ public class CartItem
 }
 
 public enum CouponType { PercentOff, FlatOff, FreeShipping, BuyXGetY }
+public enum CouponScopeType { WholeCart, SpecificProducts, SpecificCategories }
 
 public class Coupon
 {
@@ -22,6 +23,7 @@ public class Coupon
     public string Code { get; set; } = default!;      // e.g. GLAM20
     public CouponType Type { get; set; }
     public decimal Value { get; set; }                 // 20 (%) or flat rupee amount
+    public CouponScopeType ScopeType { get; set; } = CouponScopeType.WholeCart;
     public decimal? MinOrderValue { get; set; }
     public decimal? MaxDiscountAmount { get; set; }
     public DateTime ValidFrom { get; set; }
@@ -30,6 +32,38 @@ public class Coupon
     public int? TotalUsageLimit { get; set; }
     public int TimesUsed { get; set; }
     public bool IsActive { get; set; } = true;
+
+    public ICollection<CouponProduct> CouponProducts { get; set; } = new List<CouponProduct>();
+    public ICollection<CouponCategory> CouponCategories { get; set; } = new List<CouponCategory>();
+}
+
+public class CouponProduct
+{
+    public int Id { get; set; }
+    public int CouponId { get; set; }
+    public Coupon Coupon { get; set; } = default!;
+    public int ProductId { get; set; }
+    public Product Product { get; set; } = default!;
+}
+
+public class CouponCategory
+{
+    public int Id { get; set; }
+    public int CouponId { get; set; }
+    public Coupon Coupon { get; set; } = default!;
+    public int CategoryId { get; set; }
+    public Category Category { get; set; } = default!;
+}
+
+public class CouponUsage
+{
+    public int Id { get; set; }
+    public int CouponId { get; set; }
+    public Coupon Coupon { get; set; } = default!;
+    public string UserId { get; set; } = default!;
+    public ApplicationUser User { get; set; } = default!;
+    public int OrderId { get; set; }
+    public DateTime UsedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class GiftCard
@@ -87,6 +121,12 @@ public class OrderItem
     public string ProductNameSnapshot { get; set; } = default!;
     public decimal UnitPriceSnapshot { get; set; }
     public int Quantity { get; set; }
+
+    // HSN/tax snapshot the invoice must always reflect the rate actually
+    // charged at purchase time, even if that HSN code's rate changes later.
+    public string HsnCodeSnapshot { get; set; } = default!;
+    public decimal TaxRatePercentSnapshot { get; set; }
+    public decimal TaxAmountSnapshot { get; set; }
 }
 
 public class OrderStatusHistory

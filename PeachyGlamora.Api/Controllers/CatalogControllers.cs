@@ -13,7 +13,6 @@ public class CategoriesController : ControllerBase
     private readonly AppDbContext _db;
     public CategoriesController(AppDbContext db) => _db = db;
 
-    // Powers the header mega-menu and homepage category circles.
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -42,7 +41,6 @@ public class ProductsController : ControllerBase
     private readonly AppDbContext _db;
     public ProductsController(AppDbContext db) => _db = db;
 
-    // Backs the Collection page: every filter/sort control maps to a query param here.
     [HttpGet]
     public async Task<IActionResult> GetProducts([FromQuery] ProductQueryParams q)
     {
@@ -53,19 +51,20 @@ public class ProductsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(q.CategorySlug))
             query = query.Where(p => p.Category.Slug == q.CategorySlug);
 
+        // Scoped search — combines with whatever other filters (category,
+        // occasion, price, etc.) are already active rather than replacing them.
+        if (!string.IsNullOrWhiteSpace(q.Search))
+            query = query.Where(p => p.Name.Contains(q.Search));
+
         if (q.MinPrice.HasValue) query = query.Where(p => p.Variants.Any(v => v.PriceOverride >= q.MinPrice));
         if (q.MaxPrice.HasValue) query = query.Where(p => p.Variants.Any(v => v.PriceOverride <= q.MaxPrice));
 
+        // Material/Occasion are now free-text strings, so filtering is a plain
+        // string comparison — no enum parsing needed anymore.
         if (q.Materials is { Length: > 0 })
-        {
-            var materials = q.Materials.Select(m => Enum.Parse<ProductMaterial>(m, true)).ToArray();
-            query = query.Where(p => materials.Contains(p.Material));
-        }
+            query = query.Where(p => q.Materials.Contains(p.Material));
         if (q.Occasions is { Length: > 0 })
-        {
-            var occasions = q.Occasions.Select(o => Enum.Parse<ProductOccasion>(o, true)).ToArray();
-            query = query.Where(p => occasions.Contains(p.Occasion));
-        }
+            query = query.Where(p => q.Occasions.Contains(p.Occasion));
         if (q.Colors is { Length: > 0 })
             query = query.Where(p => p.Variants.Any(v => q.Colors.Contains(v.Color)));
 
@@ -98,7 +97,6 @@ public class ProductsController : ControllerBase
             p.IsNewArrival ? "New" : p.IsBestSeller ? "Bestseller" : null
         )).ToListAsync();
 
-        // Rating filter applied post-projection since it's an aggregate.
         if (q.MinRating.HasValue) items = items.Where(i => i.AverageRating >= q.MinRating).ToList();
 
         return Ok(new PagedResult<ProductListItemDto>(items, totalCount, q.Page, q.PageSize));
@@ -110,14 +108,18 @@ public class ProductsController : ControllerBase
     {
         var p = await _db.Products
             .Include(x => x.Images).Include(x => x.Variants).Include(x => x.Reviews)
+            .Include(x => x.HsnTaxRate)
             .FirstOrDefaultAsync(x => x.Slug == slug && x.IsActive);
 
         if (p == null) return NotFound();
 
+        // NOTE: ProductDetailDto does not yet carry Occasion/Material/Finish.
+        // Once you share DTOs.cs I'll add `p.Finish` (and Occasion/Material if
+        // useful) to this record and its constructor call below.
         var dto = new ProductDetailDto(
             p.Id, p.Name, p.Slug, p.Description,
             p.Variants.FirstOrDefault(v => v.IsDefault)?.Sku ?? p.Variants.First().Sku,
-            p.Variants.Min(v => v.PriceOverride), p.CompareAtPrice, p.TaxRatePercent,
+            p.Variants.Min(v => v.PriceOverride), p.CompareAtPrice, p.HsnTaxRate.TaxRatePercent,
             p.Images.OrderBy(i => i.DisplayOrder).Select(i => i.Url).ToList(),
             p.Variants.Select(v => new ProductVariantDto(v.Id, v.Color, v.ColorHex, v.Size, v.PriceOverride, v.StockQuantity)).ToList(),
             p.Reviews.Any() ? p.Reviews.Average(r => r.Rating) : 0,
@@ -128,7 +130,6 @@ public class ProductsController : ControllerBase
         return Ok(dto);
     }
 
-    // Powers "You May Also Like" — same category, excluding the current product.
     [HttpGet("{id:int}/related")]
     public async Task<IActionResult> GetRelated(int id)
     {

@@ -6,60 +6,60 @@ using PeachyGlamora.Api.Models;
 
 namespace PeachyGlamora.Api.Controllers.Admin;
 
-[ApiController]
-[Route("api/admin/coupons")]
-[Authorize(Roles = "Admin")]
-public class AdminCouponsController : ControllerBase
-{
-    private readonly AppDbContext _db;
-    public AdminCouponsController(AppDbContext db) => _db = db;
+//[ApiController]
+//[Route("api/admin/coupons")]
+//[Authorize(Roles = "Admin")]
+//public class AdminCouponsController : ControllerBase
+//{
+//    private readonly AppDbContext _db;
+//    public AdminCouponsController(AppDbContext db) => _db = db;
 
-    public record CouponUpsertDto(string Code, CouponType Type, decimal Value, decimal? MinOrderValue,
-        decimal? MaxDiscountAmount, DateTime ValidFrom, DateTime ValidTo, int? UsageLimitPerUser,
-        int? TotalUsageLimit, bool IsActive);
+//    public record CouponUpsertDto(string Code, CouponType Type, decimal Value, decimal? MinOrderValue,
+//        decimal? MaxDiscountAmount, DateTime ValidFrom, DateTime ValidTo, int? UsageLimitPerUser,
+//        int? TotalUsageLimit, bool IsActive);
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll() => Ok(await _db.Coupons.OrderByDescending(c => c.ValidFrom).ToListAsync());
+//    [HttpGet]
+//    public async Task<IActionResult> GetAll() => Ok(await _db.Coupons.OrderByDescending(c => c.ValidFrom).ToListAsync());
 
-    [HttpPost]
-    public async Task<IActionResult> Create(CouponUpsertDto dto)
-    {
-        if (await _db.Coupons.AnyAsync(c => c.Code == dto.Code.ToUpper()))
-            return BadRequest(new { error = "A coupon with this code already exists." });
+//    [HttpPost]
+//    public async Task<IActionResult> Create(CouponUpsertDto dto)
+//    {
+//        if (await _db.Coupons.AnyAsync(c => c.Code == dto.Code.ToUpper()))
+//            return BadRequest(new { error = "A coupon with this code already exists." });
 
-        var coupon = new Coupon
-        {
-            Code = dto.Code.ToUpper(), Type = dto.Type, Value = dto.Value, MinOrderValue = dto.MinOrderValue,
-            MaxDiscountAmount = dto.MaxDiscountAmount, ValidFrom = dto.ValidFrom, ValidTo = dto.ValidTo,
-            UsageLimitPerUser = dto.UsageLimitPerUser, TotalUsageLimit = dto.TotalUsageLimit, IsActive = dto.IsActive
-        };
-        _db.Coupons.Add(coupon);
-        await _db.SaveChangesAsync();
-        return Ok(coupon);
-    }
+//        var coupon = new Coupon
+//        {
+//            Code = dto.Code.ToUpper(), Type = dto.Type, Value = dto.Value, MinOrderValue = dto.MinOrderValue,
+//            MaxDiscountAmount = dto.MaxDiscountAmount, ValidFrom = dto.ValidFrom, ValidTo = dto.ValidTo,
+//            UsageLimitPerUser = dto.UsageLimitPerUser, TotalUsageLimit = dto.TotalUsageLimit, IsActive = dto.IsActive
+//        };
+//        _db.Coupons.Add(coupon);
+//        await _db.SaveChangesAsync();
+//        return Ok(coupon);
+//    }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, CouponUpsertDto dto)
-    {
-        var coupon = await _db.Coupons.FindAsync(id);
-        if (coupon == null) return NotFound();
-        coupon.Value = dto.Value; coupon.MinOrderValue = dto.MinOrderValue; coupon.MaxDiscountAmount = dto.MaxDiscountAmount;
-        coupon.ValidFrom = dto.ValidFrom; coupon.ValidTo = dto.ValidTo; coupon.UsageLimitPerUser = dto.UsageLimitPerUser;
-        coupon.TotalUsageLimit = dto.TotalUsageLimit; coupon.IsActive = dto.IsActive;
-        await _db.SaveChangesAsync();
-        return Ok(coupon);
-    }
+//    [HttpPut("{id:int}")]
+//    public async Task<IActionResult> Update(int id, CouponUpsertDto dto)
+//    {
+//        var coupon = await _db.Coupons.FindAsync(id);
+//        if (coupon == null) return NotFound();
+//        coupon.Value = dto.Value; coupon.MinOrderValue = dto.MinOrderValue; coupon.MaxDiscountAmount = dto.MaxDiscountAmount;
+//        coupon.ValidFrom = dto.ValidFrom; coupon.ValidTo = dto.ValidTo; coupon.UsageLimitPerUser = dto.UsageLimitPerUser;
+//        coupon.TotalUsageLimit = dto.TotalUsageLimit; coupon.IsActive = dto.IsActive;
+//        await _db.SaveChangesAsync();
+//        return Ok(coupon);
+//    }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var coupon = await _db.Coupons.FindAsync(id);
-        if (coupon == null) return NotFound();
-        coupon.IsActive = false; // soft-delete so past orders that used it stay meaningful
-        await _db.SaveChangesAsync();
-        return Ok();
-    }
-}
+//    [HttpDelete("{id:int}")]
+//    public async Task<IActionResult> Delete(int id)
+//    {
+//        var coupon = await _db.Coupons.FindAsync(id);
+//        if (coupon == null) return NotFound();
+//        coupon.IsActive = false; // soft-delete so past orders that used it stay meaningful
+//        await _db.SaveChangesAsync();
+//        return Ok();
+//    }
+//}
 
 [ApiController]
 [Route("api/admin/reviews")]

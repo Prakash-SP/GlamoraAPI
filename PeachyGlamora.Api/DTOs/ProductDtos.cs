@@ -4,6 +4,7 @@ namespace PeachyGlamora.Api.DTOs;
 public class ProductQueryParams
 {
     public string? CategorySlug { get; set; }
+    public string? Search { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
     public string[]? Colors { get; set; }

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <!-- ORM + SQLServer -->
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Hangfire.SqlServer" Version="1.8.23" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.20">
       <PrivateAssets>all</PrivateAssets>
@@ -40,6 +41,7 @@
 
     <!-- Background jobs (abandoned cart emails, order status jobs) -->
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
+    <PackageReference Include="QuestPDF" Version="2026.7.0" />
 
     <!-- API docs -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.3" />

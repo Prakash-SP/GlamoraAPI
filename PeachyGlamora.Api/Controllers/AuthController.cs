@@ -76,4 +76,35 @@ public class AuthController : ControllerBase
         var (success, error, result) = await _auth.VerifyOtpAsync(req.PhoneNumber, req.Code);
         return success ? Ok(result) : BadRequest(new { error });
     }
+
+    public record ForgotPasswordRequest(string Email);
+    public record ResetPasswordRequest(string Email, string Token, string NewPassword);
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Email))
+            return BadRequest(new { error = "Please enter your email address." });
+
+        await _auth.RequestPasswordResetAsync(req.Email);
+
+        // Always the exact same response whether or not the email is
+        // registered — this is the actual anti-enumeration control.
+        // RequestPasswordResetAsync silently no-ops below for unknown
+        // emails or accounts that don't use Email/password auth, but the
+        // caller can never tell the difference from this response alone.
+        return Ok(new { message = "If an account exists for that email, we've sent a password reset link." });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.NewPassword))
+            return BadRequest(new { error = "Please enter a new password." });
+
+        var (success, error) = await _auth.ResetPasswordAsync(req.Email, req.Token, req.NewPassword);
+        return success
+            ? Ok(new { message = "Your password has been reset. You can now log in." })
+            : BadRequest(new { error });
+    }
 }
