@@ -9,5 +9,9 @@
 *.user
 *.suo
 
+# App settings
+**/appsettings.Development.json
+**/appsettings.Production.json
+
 # Logs
 *.log
