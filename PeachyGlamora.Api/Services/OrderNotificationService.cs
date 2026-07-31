@@ -7,6 +7,7 @@ public interface IOrderNotificationService
 {
     Task SendOrderConfirmationAsync(int orderId);
     Task SendOrderStatusUpdateAsync(int orderId, string newStatus);
+    Task SendNewOrderAdminAlertAsync(int orderId);
 }
 
 /// <summary>Composes and sends the order-confirmation email + SMS. Run via a Hangfire background
@@ -17,11 +18,13 @@ public class OrderNotificationService : IOrderNotificationService
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
     private readonly ISmsService _sms;
+    private readonly IConfiguration _config;
     private readonly ILogger<OrderNotificationService> _logger;
 
-    public OrderNotificationService(AppDbContext db, IEmailService email, ISmsService sms, ILogger<OrderNotificationService> logger)
+    public OrderNotificationService(
+        AppDbContext db, IEmailService email, ISmsService sms, IConfiguration config, ILogger<OrderNotificationService> logger)
     {
-        _db = db; _email = email; _sms = sms; _logger = logger;
+        _db = db; _email = email; _sms = sms; _config = config; _logger = logger;
     }
 
     public async Task SendOrderConfirmationAsync(int orderId)
@@ -70,6 +73,69 @@ public class OrderNotificationService : IOrderNotificationService
                       $"(Rs.{order.TotalAmount:0}) is confirmed. Delivery by {order.EstimatedDeliveryDate:dd MMM}. Thank you for shopping with us!";
             await _sms.SendSmsAsync(order.User.PhoneNumber!, sms);
         }
+    }
+
+    // Fires once per order, right after checkout — separate from
+    // SendOrderConfirmationAsync above (that one goes to the customer;
+    // this one goes to the store, so it's a different recipient, subject,
+    // and content — no reason to conflate the two into one method).
+    // Sent to Smtp:FromEmail — the same address the store sends everything
+    // FROM also doubles as the internal notification inbox, per the
+    // existing appsettings.json convention (no separate config key added).
+    public async Task SendNewOrderAdminAlertAsync(int orderId)
+    {
+        var order = await _db.Orders
+            .Include(o => o.Items)
+            .Include(o => o.User)
+            .Include(o => o.ShippingAddress)
+            .Include(o => o.Payment)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null)
+        {
+            _logger.LogWarning("Order {OrderId} not found — skipping admin new-order alert.", orderId);
+            return;
+        }
+
+        var adminEmail = _config["Smtp:FromEmail"];
+        if (string.IsNullOrWhiteSpace(adminEmail))
+        {
+            // Shouldn't happen in practice — Smtp:FromEmail is required for
+            // every other email this service sends too — but guard anyway
+            // rather than letting SendAsync fail with a confusing error.
+            _logger.LogWarning("Smtp:FromEmail is not configured — skipping admin new-order alert for order {OrderId}.", orderId);
+            return;
+        }
+
+        var itemRows = string.Join("", order.Items.Select(i => $@"
+            <tr>
+              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8;'>{System.Net.WebUtility.HtmlEncode(i.ProductNameSnapshot)} × {i.Quantity}</td>
+              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8; text-align:right;'>₹{i.UnitPriceSnapshot * i.Quantity:0.00}</td>
+            </tr>"));
+
+        var adminOrderLink = $"{_config["Frontend:BaseUrl"] ?? "http://localhost:4200"}/admin/orders/{order.Id}";
+
+        var html = $@"
+            <div style='font-family:Arial,sans-serif; max-width:560px; margin:auto; color:#3E2A24;'>
+              <h2 style='color:#9C6650; font-weight:500;'>New Order Placed 🛍️</h2>
+              <p style='font-size:15px;'>Order Number: <b>{order.OrderNumber}</b></p>
+
+              <table style='width:100%; border-collapse:collapse; margin:14px 0; font-size:13.5px;'>
+                <tr><td style='padding:4px 0; color:#6E5147;'>Customer</td><td style='padding:4px 0; text-align:right;'>{System.Net.WebUtility.HtmlEncode(order.User.FullName)}</td></tr>
+                <tr><td style='padding:4px 0; color:#6E5147;'>Email</td><td style='padding:4px 0; text-align:right;'>{System.Net.WebUtility.HtmlEncode(order.User.Email ?? "—")}</td></tr>
+                <tr><td style='padding:4px 0; color:#6E5147;'>Phone</td><td style='padding:4px 0; text-align:right;'>{System.Net.WebUtility.HtmlEncode(order.User.PhoneNumber ?? "—")}</td></tr>
+                <tr><td style='padding:4px 0; color:#6E5147;'>Payment Method</td><td style='padding:4px 0; text-align:right;'>{order.Payment?.Method.ToString() ?? "—"}</td></tr>
+              </table>
+
+              <table style='width:100%; border-collapse:collapse; margin:18px 0;'>{itemRows}</table>
+              <p style='font-size:16px;'><b>Total: ₹{order.TotalAmount:0.00}</b></p>
+
+              <p style='font-size:13.5px; color:#6E5147;'>Shipping to: {System.Net.WebUtility.HtmlEncode(order.ShippingAddress.Line1)}, {System.Net.WebUtility.HtmlEncode(order.ShippingAddress.City)} - {order.ShippingAddress.Pincode}</p>
+
+              <p style='margin-top:20px;'><a href='{adminOrderLink}' style='color:#9C6650;'>View this order in the admin panel →</a></p>
+            </div>";
+
+        await _email.SendAsync(adminEmail, $"New Order — {order.OrderNumber} (₹{order.TotalAmount:0.00})", html);
     }
 
     public async Task SendOrderStatusUpdateAsync(int orderId, string newStatus)

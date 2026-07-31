@@ -149,6 +149,11 @@ public class OrderService : IOrderService
         // "Payment Received" notification goes out later once UPI payment is reconciled.
         _backgroundJobs.Enqueue<IOrderNotificationService>(s => s.SendOrderConfirmationAsync(order.Id));
 
+        // Every order, regardless of payment method, also alerts the store —
+        // same fire-and-forget reasoning as the line above: a slow SMTP send
+        // should never hold up the checkout response the customer is waiting on.
+        _backgroundJobs.Enqueue<IOrderNotificationService>(s => s.SendNewOrderAdminAlertAsync(order.Id));
+
         return new OrderConfirmationDto(order.OrderNumber, order.TotalAmount, order.Status.ToString(),
             order.EstimatedDeliveryDate!.Value, upiIntentUri, upiQrBase64);
     }

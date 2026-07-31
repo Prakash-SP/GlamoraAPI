@@ -13,5 +13,8 @@
 **/appsettings.Development.json
 **/appsettings.Production.json
 
+# EF Core migration bundle
+PeachyGlamora.Api/efbundle
+
 # Logs
 *.log
