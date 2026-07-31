@@ -91,6 +91,10 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ---------- App services ----------
+// Generic HttpClient factory — used by PincodeController for the server-side
+// fallback call to the external India Post pincode API (a direct browser
+// call to that API is blocked by CORS, so this fallback must happen here).
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICartService, CartService>();
