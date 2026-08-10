@@ -63,6 +63,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         base.OnModelCreating(builder); // keep Identity's own configuration
 
         // ---- Uniqueness constraints ----
+        // RequireUniqueEmail=true in Program.cs only makes UserManager.CreateAsync
+        // CHECK for an existing email before inserting — it does not add a DB
+        // constraint, so two near-simultaneous registrations (or two first-time
+        // Google logins) for the same email can both pass that check before
+        // either row commits. This index is the actual backstop.
+        // Indexed on NormalizedEmail (not Email) to match how Identity itself
+        // does lookups — case-insensitive. Filtered to exclude NULLs.
+        builder.Entity<ApplicationUser>()
+            .HasIndex(u => u.NormalizedEmail)
+            .IsUnique()
+            .HasFilter("[NormalizedEmail] IS NOT NULL");
+
+        // Same reasoning, extended to phone — nothing previously stopped the
+        // same phone number ending up on two separate accounts (one via
+        // email/password Register, another via OTP verify).
+        builder.Entity<ApplicationUser>()
+            .HasIndex(u => u.PhoneNumber)
+            .IsUnique()
+            .HasFilter("[PhoneNumber] IS NOT NULL");
+
         builder.Entity<Category>().HasIndex(c => c.Slug).IsUnique();
         builder.Entity<Product>().HasIndex(p => p.Slug).IsUnique();
         builder.Entity<ProductVariant>().HasIndex(v => v.Sku).IsUnique();
@@ -142,6 +162,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             new Category { Id = 4, Name = "Rings", Slug = "rings", DisplayOrder = 4 },
             new Category { Id = 5, Name = "Bracelets", Slug = "bracelets", DisplayOrder = 5 },
             new Category { Id = 6, Name = "Combo Sets", Slug = "combo-sets", DisplayOrder = 6 }
+        );
+
+        // ---- Seed starter blog categories so the admin has something to pick
+        // from immediately after first deploy, without a manual SQL insert ----
+        builder.Entity<BlogCategory>().HasData(
+            new BlogCategory { Id = 1, Name = "Styling Tips", Slug = "styling-tips" },
+            new BlogCategory { Id = 2, Name = "Jewelry Care", Slug = "jewelry-care" },
+            new BlogCategory { Id = 3, Name = "Gift Guides", Slug = "gift-guides" }
         );
 
         // ---- Seed standard GST HSN codes covering imitation/fashion jewellery, so

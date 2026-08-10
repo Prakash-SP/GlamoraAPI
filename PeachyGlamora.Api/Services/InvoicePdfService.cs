@@ -11,6 +11,12 @@ public interface IInvoicePdfService
     // Returns null if no matching order is found for this user (controller
     // turns that into a 404 — the service itself doesn't know about HTTP).
     Task<byte[]?> GenerateInvoicePdfAsync(string orderNumber, string userId);
+
+    // Admin/Support variant — no UserId filter, since staff need to print
+    // the invoice for ANY order, not just their own. Looked up by internal
+    // Order.Id (what the admin panel already has on hand) rather than
+    // OrderNumber, to match AdminOrdersController's existing {id:int} routes.
+    Task<byte[]?> GenerateInvoicePdfForAdminAsync(int orderId);
 }
 
 public class InvoicePdfService : IInvoicePdfService
@@ -53,31 +59,47 @@ public class InvoicePdfService : IInvoicePdfService
     {
         var data = await _db.Orders
             .Where(o => o.OrderNumber == orderNumber && o.UserId == userId)
-            .Select(o => new InvoiceData(
-                o.OrderNumber,
-                o.CreatedAt,
-                o.User.FullName,
-                o.User.Email,
-                o.ShippingAddress.FullName,
-                o.ShippingAddress.Phone,
-                o.ShippingAddress.Line1,
-                o.ShippingAddress.Line2,
-                o.ShippingAddress.City,
-                o.ShippingAddress.State,
-                o.ShippingAddress.Pincode,
-                o.Subtotal,
-                o.DiscountAmount,
-                o.TaxAmount,
-                o.ShippingAmount,
-                o.TotalAmount,
-                o.CouponCode,
-                o.Items
-                    .Select(i => new InvoiceLineItem(i.ProductNameSnapshot, i.UnitPriceSnapshot, i.Quantity))
-                    .ToList()))
+            .Select(ProjectToInvoiceData())
             .FirstOrDefaultAsync();
 
         return data == null ? null : Render(data);
     }
+
+    public async Task<byte[]?> GenerateInvoicePdfForAdminAsync(int orderId)
+    {
+        var data = await _db.Orders
+            .Where(o => o.Id == orderId)
+            .Select(ProjectToInvoiceData())
+            .FirstOrDefaultAsync();
+
+        return data == null ? null : Render(data);
+    }
+
+    // Shared projection so the customer-facing and admin-facing lookups stay
+    // byte-for-byte identical in what they render — only the WHERE clause
+    // (and therefore the access-control check) differs between the two
+    // public methods above.
+    private static System.Linq.Expressions.Expression<Func<Models.Order, InvoiceData>> ProjectToInvoiceData() => o => new InvoiceData(
+        o.OrderNumber,
+        o.CreatedAt,
+        o.User.FullName,
+        o.User.Email,
+        o.ShippingAddress.FullName,
+        o.ShippingAddress.Phone,
+        o.ShippingAddress.Line1,
+        o.ShippingAddress.Line2,
+        o.ShippingAddress.City,
+        o.ShippingAddress.State,
+        o.ShippingAddress.Pincode,
+        o.Subtotal,
+        o.DiscountAmount,
+        o.TaxAmount,
+        o.ShippingAmount,
+        o.TotalAmount,
+        o.CouponCode,
+        o.Items
+            .Select(i => new InvoiceLineItem(i.ProductNameSnapshot, i.UnitPriceSnapshot, i.Quantity))
+            .ToList());
 
     private static byte[] Render(InvoiceData d)
     {
@@ -104,7 +126,10 @@ public class InvoicePdfService : IInvoicePdfService
                         {
                             c.Item().AlignRight().Text("TAX INVOICE").FontSize(14).Bold();
                             c.Item().AlignRight().Text($"Order #{d.OrderNumber}").FontSize(10);
-                            c.Item().AlignRight().Text($"Date: {d.CreatedAt:dd MMM yyyy}").FontSize(10);
+                            // CreatedAt is stored/computed in UTC — convert to IST before
+                            // printing, since this renders as plain PDF text, not JSON
+                            // (see IstTimeHelper for why this needs a manual conversion here).
+                            c.Item().AlignRight().Text($"Date: {IstTimeHelper.ToIst(d.CreatedAt):dd MMM yyyy}").FontSize(10);
                         });
                     });
                     col.Item().PaddingTop(10).LineHorizontal(1);

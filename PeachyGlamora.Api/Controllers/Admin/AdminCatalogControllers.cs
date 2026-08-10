@@ -1,8 +1,10 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PeachyGlamora.Api.Data;
 using PeachyGlamora.Api.Models;
+using PeachyGlamora.Api.Services;
 
 namespace PeachyGlamora.Api.Controllers.Admin;
 
@@ -12,7 +14,12 @@ namespace PeachyGlamora.Api.Controllers.Admin;
 public class AdminProductsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public AdminProductsController(AppDbContext db) => _db = db;
+    private readonly IBackgroundJobClient _backgroundJobs;
+    public AdminProductsController(AppDbContext db, IBackgroundJobClient backgroundJobs)
+    {
+        _db = db;
+        _backgroundJobs = backgroundJobs;
+    }
 
     public record ProductUpsertDto(
         string Name, string Slug, string Description, string ShortDescription,
@@ -234,8 +241,13 @@ public class AdminProductsController : ControllerBase
     [HttpPut("variants/{variantId:int}")]
     public async Task<IActionResult> UpdateVariant(int variantId, VariantUpsertDto dto)
     {
-        var variant = await _db.ProductVariants.FindAsync(variantId);
+        var variant = await _db.ProductVariants.Include(v => v.Product).ThenInclude(p => p.Variants)
+            .FirstOrDefaultAsync(v => v.Id == variantId);
         if (variant == null) return NotFound();
+
+        // Captured BEFORE the stock change below — "restocked" means the whole
+        // product (all its variants combined) was at zero and is no longer.
+        var wasInStock = variant.Product.Variants.Any(v => v.StockQuantity > 0);
 
         // Same one-default-per-product rule as AddVariant — clear siblings
         // (excluding this variant itself) before applying the flag here.
@@ -253,6 +265,10 @@ public class AdminProductsController : ControllerBase
         variant.IsDefault = dto.IsDefault;
         await _db.SaveChangesAsync();
 
+        var isInStockNow = variant.Product.Variants.Any(v => v.StockQuantity > 0);
+        if (!wasInStock && isInStockNow)
+            _backgroundJobs.Enqueue<IRestockNotificationService>(s => s.NotifyWishlistersAsync(variant.ProductId));
+
         return Ok(new
         {
             variant.Id,
@@ -269,10 +285,22 @@ public class AdminProductsController : ControllerBase
     [HttpPut("variants/{variantId:int}/stock")]
     public async Task<IActionResult> UpdateStock(int variantId, [FromBody] int newQuantity)
     {
-        var variant = await _db.ProductVariants.FindAsync(variantId);
+        var variant = await _db.ProductVariants.Include(v => v.Product).ThenInclude(p => p.Variants)
+            .FirstOrDefaultAsync(v => v.Id == variantId);
         if (variant == null) return NotFound();
+
+        // Captured BEFORE the stock change below — see UpdateVariant for the
+        // same reasoning (this is the quick inline stock-edit box on the
+        // admin product form; UpdateVariant is the full variant-edit form —
+        // both can trigger a restock, so both need this check).
+        var wasInStock = variant.Product.Variants.Any(v => v.StockQuantity > 0);
+
         variant.StockQuantity = newQuantity;
         await _db.SaveChangesAsync();
+
+        var isInStockNow = variant.Product.Variants.Any(v => v.StockQuantity > 0);
+        if (!wasInStock && isInStockNow)
+            _backgroundJobs.Enqueue<IRestockNotificationService>(s => s.NotifyWishlistersAsync(variant.ProductId));
 
         return Ok(new
         {

@@ -182,7 +182,12 @@ public class CartService : ICartService
 
         if (userId != null && coupon.UsageLimitPerUser.HasValue)
         {
-            var usedByUser = await _db.CouponUsages.CountAsync(u => u.CouponId == coupon.Id && u.UserId == userId);
+            // !u.IsReversed — a cancelled order's coupon usage is reversed
+            // (see OrdersController.CancelOrder / AdminOrdersController)
+            // and shouldn't count against the customer's remaining uses.
+            // A completed Return, on the other hand, does NOT reverse this,
+            // since the coupon redemption genuinely happened.
+            var usedByUser = await _db.CouponUsages.CountAsync(u => u.CouponId == coupon.Id && u.UserId == userId && !u.IsReversed);
             if (usedByUser >= coupon.UsageLimitPerUser)
                 return new CouponResult(false, "You've already used this coupon the maximum number of times.", 0, false, new());
         }

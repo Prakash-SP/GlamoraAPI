@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PeachyGlamora.Api.Data;
+using PeachyGlamora.Api.DTOs;
 using PeachyGlamora.Api.Models;
 
 namespace PeachyGlamora.Api.Controllers;
@@ -84,11 +85,33 @@ public class WishlistController : ControllerBase
     private string UserId => User.FindFirst("sub")!.Value;
 
     [HttpGet]
-    public async Task<IActionResult> GetWishlist() =>
-        Ok(await _db.WishlistItems.Include(w => w.Product).ThenInclude(p => p.Images)
+    public async Task<IActionResult> GetWishlist()
+    {
+        var items = await _db.WishlistItems
+            .Include(w => w.Product).ThenInclude(p => p.Images)
+            .Include(w => w.Product).ThenInclude(p => p.Variants)
             .Where(w => w.UserId == UserId)
-            .Select(w => new { w.Product.Id, w.Product.Name, w.Product.Slug, ImageUrl = w.Product.Images.FirstOrDefault(i => i.IsPrimary)!.Url })
-            .ToListAsync());
+            .OrderByDescending(w => w.AddedAt)
+            .Select(w => new WishlistItemDto(
+                w.Product.Id,
+                w.Product.Name,
+                w.Product.Slug,
+                w.Product.Images.Where(i => i.IsPrimary).Select(i => i.Url).FirstOrDefault()
+                    ?? w.Product.Images.Select(i => i.Url).FirstOrDefault() ?? "",
+                w.Product.Variants.Min(v => v.PriceOverride),
+                w.Product.CompareAtPrice,
+                w.Product.Variants.Any(v => v.StockQuantity > 0),
+                // Prefer the default variant if it's actually in stock; otherwise
+                // fall back to whichever variant does have stock; null if none do.
+                w.Product.Variants.Where(v => v.StockQuantity > 0)
+                    .OrderByDescending(v => v.IsDefault)
+                    .Select(v => (int?)v.Id)
+                    .FirstOrDefault(),
+                w.AddedAt))
+            .ToListAsync();
+
+        return Ok(items);
+    }
 
     [HttpPost("{productId:int}")]
     public async Task<IActionResult> Add(int productId)

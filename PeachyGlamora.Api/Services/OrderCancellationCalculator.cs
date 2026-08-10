@@ -11,6 +11,9 @@ public static class OrderCancellationCalculator
         decimal OriginalAmount, decimal ShippingDeduction, decimal RefundAmount,
         bool PaymentReceived, string DeductionReason);
 
+    // Refund result for a single order item (Article-wise cancellation).
+    public record ItemCancellationResult(decimal ItemAmount, decimal RefundAmount, bool PaymentReceived);
+
     public static CancellationPreview Calculate(Order order)
     {
         var paymentReceived = order.Payment?.Status == PaymentStatus.Paid;
@@ -37,6 +40,51 @@ public static class OrderCancellationCalculator
             reason = "The full amount is refunded since the order had not yet shipped.";
 
         return new CancellationPreview(order.TotalAmount, shippingDeduction, refundAmount, paymentReceived, reason);
+    }
+
+    // Per-item cancellation is only ever offered while the order is Confirmed
+    // or Processing (enforced in AdminOrdersController.CancelItem) — i.e.
+    // always pre-shipment — so there's no shipping-deduction branch to worry
+    // about here, unlike the whole-order Calculate() above. TaxAmountSnapshot
+    // is already the per-item, coupon-prorated tax computed at checkout time
+    // (see OrderService.CheckoutAsync), so refunding
+    // UnitPriceSnapshot * Quantity + TaxAmountSnapshot is correct and exact.
+    public static ItemCancellationResult CalculateForItem(OrderItem item, Payment? payment)
+    {
+        var paymentReceived = payment?.Status == PaymentStatus.Paid;
+        var itemAmount = (item.UnitPriceSnapshot * item.Quantity) + item.TaxAmountSnapshot;
+        var refundAmount = paymentReceived ? itemAmount : 0m;
+        return new ItemCancellationResult(itemAmount, refundAmount, paymentReceived);
+    }
+
+    // Recomputes Payment.Status purely from the actual RefundStatus of every
+    // cancelled item on the order — Paid -> PartiallyRefunded (some items
+    // marked Refunded, some still Pending) -> Refunded (every cancelled,
+    // payment-owing item marked Refunded). This is the single source of
+    // truth for Payment.Status going forward: nothing should set
+    // Payment.Status = Refunded/PartiallyRefunded directly anymore — call
+    // this instead, any time an item's IsCancelled/RefundStatus changes on a
+    // paid order, so Payment.Status can never claim money moved before an
+    // admin actually confirmed the UPI transfer via Mark Refunded.
+    public static void RecalculatePaymentStatus(Order order)
+    {
+        if (order.Payment == null) return;
+        if (order.Payment.Status is not (PaymentStatus.Paid or PaymentStatus.PartiallyRefunded or PaymentStatus.Refunded))
+            return; // nothing to recalculate — payment was never actually Paid to begin with
+
+        var refundableItems = order.Items.Where(i => i.IsCancelled && i.RefundStatus != RefundStatus.NotApplicable).ToList();
+        if (refundableItems.Count == 0) return; // no cancelled+paid items — leave Payment.Status untouched
+
+        var allRefunded = refundableItems.All(i => i.RefundStatus == RefundStatus.Refunded);
+        var anyRefunded = refundableItems.Any(i => i.RefundStatus == RefundStatus.Refunded);
+
+        if (allRefunded)
+            order.Payment.Status = PaymentStatus.Refunded;
+        else if (anyRefunded)
+            order.Payment.Status = PaymentStatus.PartiallyRefunded;
+        // else: every cancelled item is still Pending — leave Payment.Status
+        // exactly as it was (normally Paid). No money has moved yet, so
+        // nothing here should claim otherwise.
     }
 
     // Gate for admin order-status changes. Only UPI (and similar "pay first")

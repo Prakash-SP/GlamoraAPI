@@ -24,6 +24,7 @@ public class CategoriesController : ControllerBase
                 c.Id,
                 c.Name,
                 c.Slug,
+                c.Description,
                 c.ImageUrl,
                 SubCategories = c.SubCategories.Where(s => s.IsActive)
                     .Select(s => new { s.Id, s.Name, s.Slug })
@@ -73,13 +74,18 @@ public class ProductsController : ControllerBase
         if (q.IsTrending == true) query = query.Where(p => p.IsTrending);
         if (q.InStockOnly == true) query = query.Where(p => p.Variants.Any(v => v.StockQuantity > 0));
 
+        // In-stock products first, out-of-stock always last — regardless of which
+        // sort mode is active. The chosen SortBy still governs ordering *within*
+        // each of those two buckets via ThenBy.
+        var stockOrdered = query.OrderBy(p => p.Variants.Any(v => v.StockQuantity > 0) ? 0 : 1);
+
         query = q.SortBy switch
         {
-            "priceLow" => query.OrderBy(p => p.Variants.Min(v => v.PriceOverride)),
-            "priceHigh" => query.OrderByDescending(p => p.Variants.Min(v => v.PriceOverride)),
-            "bestselling" => query.OrderByDescending(p => p.IsBestSeller).ThenByDescending(p => p.Reviews.Count),
-            "popular" => query.OrderByDescending(p => p.Reviews.Count),
-            _ => query.OrderByDescending(p => p.CreatedAt) // "newest"
+            "priceLow" => stockOrdered.ThenBy(p => p.Variants.Min(v => v.PriceOverride)),
+            "priceHigh" => stockOrdered.ThenByDescending(p => p.Variants.Min(v => v.PriceOverride)),
+            "bestselling" => stockOrdered.ThenByDescending(p => p.IsBestSeller).ThenByDescending(p => p.Reviews.Count),
+            "popular" => stockOrdered.ThenByDescending(p => p.Reviews.Count),
+            _ => stockOrdered.ThenByDescending(p => p.CreatedAt) // "newest"
         };
 
         var totalCount = await query.CountAsync();
@@ -139,6 +145,8 @@ public class ProductsController : ControllerBase
         var related = await _db.Products
             .Include(p => p.Images).Include(p => p.Variants)
             .Where(p => p.CategoryId == product.CategoryId && p.Id != id && p.IsActive)
+            .OrderBy(p => p.Variants.Any(v => v.StockQuantity > 0) ? 0 : 1)
+            .ThenByDescending(p => p.CreatedAt)
             .Take(4)
             .Select(p => new ProductListItemDto(
                 p.Id, p.Name, p.Slug, "", p.Variants.Min(v => v.PriceOverride), p.CompareAtPrice,

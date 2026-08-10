@@ -8,4 +8,4 @@ public record VerifyOtpRequest(string PhoneNumber, string Code);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Email, string Token, string NewPassword);
 
-public record AuthResponse(string UserId, string FullName, string Email, string AccessToken, DateTime ExpiresAt);
+public record AuthResponse(string Id, string FullName, string Email, string Token, DateTime Expires, bool EmailConfirmed);

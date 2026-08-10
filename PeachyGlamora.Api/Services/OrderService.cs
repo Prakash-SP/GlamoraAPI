@@ -138,7 +138,24 @@ public class OrderService : IOrderService
         if (!string.IsNullOrWhiteSpace(req.CouponCode))
         {
             var coupon = await _db.Coupons.FirstOrDefaultAsync(c => c.Code == req.CouponCode!.ToUpper());
-            if (coupon != null) coupon.TimesUsed++;
+            if (coupon != null)
+            {
+                coupon.TimesUsed++;
+
+                // Previously ONLY TimesUsed was incremented — no CouponUsage
+                // row was ever written, which meant CartService.ValidateCouponAsync's
+                // per-user limit check (which queries CouponUsages) always saw
+                // zero uses and silently never enforced UsageLimitPerUser.
+                // order.Id is already populated here from the first SaveChangesAsync
+                // above (order creation), before this second save.
+                _db.CouponUsages.Add(new CouponUsage
+                {
+                    CouponId = coupon.Id,
+                    UserId = userId,
+                    OrderId = order.Id,
+                    UsedAt = DateTime.UtcNow,
+                });
+            }
         }
 
         await _db.SaveChangesAsync();

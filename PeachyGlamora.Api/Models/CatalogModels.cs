@@ -117,6 +117,7 @@ public class ProductQuestion
     public int ProductId { get; set; }
     public Product Product { get; set; } = default!;
     public string UserId { get; set; } = default!;
+    public ApplicationUser User { get; set; } = default!;   // ← add this line
     public string Question { get; set; } = default!;
     public string? Answer { get; set; }
     public DateTime AskedAt { get; set; } = DateTime.UtcNow;

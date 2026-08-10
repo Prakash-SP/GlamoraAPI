@@ -86,12 +86,45 @@ public class AdminReviewsController : ControllerBase
         return Ok();
     }
 
-    [HttpPost("questions/{id:int}/answer")]
-    public async Task<IActionResult> AnswerQuestion(int id, [FromBody] string answer)
+    // NEW — was previously missing entirely. Returns ALL questions (answered
+    // and unanswered), newest-first, with unanswered ones surfaced first so
+    // admins see what needs attention without hunting through a date-sorted list.
+    [HttpGet("questions")]
+    public async Task<IActionResult> GetQuestions([FromQuery] int page = 1, [FromQuery] int pageSize = 25)
     {
+        var query = _db.ProductQuestions.Include(q => q.Product).Include(q => q.User)
+            .OrderBy(q => q.Answer == null ? 0 : 1)   // unanswered first
+            .ThenByDescending(q => q.AskedAt);
+
+        var total = await query.CountAsync();
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(q => new
+            {
+                q.Id,
+                q.Question,
+                q.Answer,
+                q.AskedAt,
+                q.AnsweredAt,
+                ProductName = q.Product.Name,
+                ProductId = q.ProductId,
+                CustomerName = q.User.FullName,
+            })
+            .ToListAsync();
+
+        return Ok(new { total, page, pageSize, items });
+    }
+
+    public record AnswerQuestionDto(string Answer);
+
+    [HttpPost("questions/{id:int}/answer")]
+    public async Task<IActionResult> AnswerQuestion(int id, [FromBody] AnswerQuestionDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Answer))
+            return BadRequest(new { error = "Please enter an answer." });
+
         var question = await _db.ProductQuestions.FindAsync(id);
         if (question == null) return NotFound();
-        question.Answer = answer;
+        question.Answer = dto.Answer;
         question.AnsweredAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(question);

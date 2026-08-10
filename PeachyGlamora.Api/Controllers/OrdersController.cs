@@ -152,6 +152,29 @@ public class OrdersController : ControllerBase
         order.Status = Models.OrderStatus.Cancelled;
         foreach (var item in order.Items) item.ProductVariant.StockQuantity += item.Quantity; // release stock
 
+        // Reverse the coupon's usage against this order, if one was applied —
+        // the redemption never actually completed, so it shouldn't count
+        // against the customer's UsageLimitPerUser or the coupon's
+        // TotalUsageLimit anymore. Deliberately NOT done on a Return (see
+        // ReturnsController below) — a return means the sale genuinely
+        // happened, so that coupon use stays counted.
+        if (!string.IsNullOrWhiteSpace(order.CouponCode))
+        {
+            var coupon = await _db.Coupons.FirstOrDefaultAsync(c => c.Code == order.CouponCode);
+            if (coupon != null)
+            {
+                coupon.TimesUsed = Math.Max(0, coupon.TimesUsed - 1);
+
+                var usage = await _db.CouponUsages
+                    .FirstOrDefaultAsync(u => u.OrderId == order.Id && u.CouponId == coupon.Id && !u.IsReversed);
+                if (usage != null)
+                {
+                    usage.IsReversed = true;
+                    usage.ReversedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
         order.StatusHistory.Add(new Models.OrderStatusHistory
         {
             Status = Models.OrderStatus.Cancelled,

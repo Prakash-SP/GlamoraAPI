@@ -107,4 +107,25 @@ public class AuthController : ControllerBase
             ? Ok(new { message = "Your password has been reset. You can now log in." })
             : BadRequest(new { error });
     }
+
+    public record ConfirmEmailRequest(string Email, string Token);
+    public record ResendConfirmationRequest(string Email);
+
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail(ConfirmEmailRequest req)
+    {
+        var (success, error) = await _auth.ConfirmEmailAsync(req.Email, req.Token);
+        return success ? Ok(new { message = "Your email has been confirmed." }) : BadRequest(new { error });
+    }
+
+    [HttpPost("resend-confirmation")]
+    public async Task<IActionResult> ResendConfirmation(ResendConfirmationRequest req)
+    {
+        await _auth.RequestEmailConfirmationAsync(req.Email);
+
+        // Same anti-enumeration reasoning as forgot-password — identical
+        // response whether the account exists, is already confirmed, or uses
+        // Google/OTP auth (nothing to confirm in that case).
+        return Ok(new { message = "If an account exists for that email and it isn't confirmed yet, we've sent a new confirmation link." });
+    }
 }

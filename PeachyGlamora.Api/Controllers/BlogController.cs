@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PeachyGlamora.Api.Data;
 
@@ -31,7 +31,33 @@ public class BlogController : ControllerBase
     [HttpGet("posts/{slug}")]
     public async Task<IActionResult> GetPost(string slug)
     {
-        var post = await _db.BlogPosts.Include(p => p.BlogCategory).FirstOrDefaultAsync(p => p.Slug == slug && p.IsPublished);
+        // Projected into an anonymous object, same reasoning as GetPosts above —
+        // returning the tracked BlogPost entity directly (with .Include(BlogCategory))
+        // meant System.Text.Json walked BlogPost → BlogCategory → BlogCategory.Posts →
+        // BlogPost → ... forever. That cycle wasn't caught until partway through
+        // writing the response body, by which point the 200 status and headers were
+        // already committed — so the browser saw a "successful" response that just
+        // cuts off mid-stream, with no clean error surfaced anywhere.
+        var post = await _db.BlogPosts
+            .Where(p => p.Slug == slug && p.IsPublished)
+            .Select(p => new
+            {
+                p.Id,
+                p.BlogCategoryId,
+                p.Title,
+                p.Slug,
+                p.Excerpt,
+                p.ContentHtml,
+                p.CoverImageUrl,
+                p.AuthorName,
+                p.PublishedAt,
+                p.MetaTitle,
+                p.MetaDescription,
+                CategoryName = p.BlogCategory.Name,
+                CategorySlug = p.BlogCategory.Slug,
+            })
+            .FirstOrDefaultAsync();
+
         if (post == null) return NotFound();
 
         var related = await _db.BlogPosts

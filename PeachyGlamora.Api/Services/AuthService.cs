@@ -15,6 +15,8 @@ public interface IAuthService
     Task<(bool success, string? error, AuthResponse? result)> VerifyOtpAsync(string phoneNumber, string code);
     Task RequestPasswordResetAsync(string email);
     Task<(bool success, string? error)> ResetPasswordAsync(string email, string token, string newPassword);
+    Task<(bool success, string? error)> ConfirmEmailAsync(string email, string token);
+    Task RequestEmailConfirmationAsync(string email);
 }
 
 public class AuthService : IAuthService
@@ -50,6 +52,13 @@ public class AuthService : IAuthService
         var existing = await _userManager.FindByEmailAsync(req.Email);
         if (existing != null) return (false, "An account with this email already exists.", null);
 
+        // Same "cheap early check, DB index is the real backstop" pattern as
+        // email — someone may have already registered this phone number
+        // through the OTP flow (VerifyOtpAsync) before ever hitting this
+        // email/password path.
+        var phoneInUse = await _userManager.Users.AnyAsync(u => u.PhoneNumber == req.Phone);
+        if (phoneInUse) return (false, "An account with this phone number already exists.", null);
+
         var user = new ApplicationUser
         {
             UserName = req.Email,
@@ -61,13 +70,42 @@ public class AuthService : IAuthService
             ReferralCode = GenerateReferralCode(req.FullName)
         };
 
-        var result = await _userManager.CreateAsync(user, req.Password);
+        IdentityResult result;
+        try
+        {
+            result = await _userManager.CreateAsync(user, req.Password);
+        }
+        catch (DbUpdateException)
+        {
+            // The checks above are just an early, cheap rejection for the common
+            // case — they can't see a second request registering the SAME email
+            // or phone at nearly the same instant, since neither has committed
+            // yet when the other checks. The unique indexes on
+            // ApplicationUser.NormalizedEmail and .PhoneNumber (AppDbContext.cs)
+            // are what actually prevent the duplicate row; this catches that
+            // constraint violation. Deliberately generic (doesn't say which of
+            // the two collided) — telling an attacker exactly which field
+            // matched an existing account is a minor enumeration leak, and the
+            // person retrying the form will see soon enough which field is the
+            // problem once they change one and resubmit.
+            return (false, "An account with this email or phone number already exists.", null);
+        }
+
         if (!result.Succeeded)
             return (false, string.Join("; ", result.Errors.Select(e => e.Description)), null);
 
         await _userManager.AddToRoleAsync(user, "Customer");
+
+        // New account, so EmailConfirmed is always false at this point (Identity
+        // defaults it false; Register never sets it, unlike Google login which
+        // sets it true since Google already verified that email). Doesn't block
+        // returning success — the account exists and can log in immediately,
+        // per the "allow login, show a banner" decision — this just kicks off
+        // the confirmation email alongside it.
+        await SendConfirmationEmailAsync(user);
+
         var (token, expires) = _jwt.GenerateToken(user, new[] { "Customer" });
-        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires));
+        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires, user.EmailConfirmed));
     }
 
     // Mirrors the frontend's register-form checks, but this is the copy that actually
@@ -128,7 +166,7 @@ public class AuthService : IAuthService
 
         var roles = await _userManager.GetRolesAsync(user);
         var (token, expires) = _jwt.GenerateToken(user, roles);
-        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires));
+        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires, user.EmailConfirmed));
     }
 
     public async Task<(bool, string?, AuthResponse?)> LoginWithGoogleAsync(string email, string fullName, string googleSubjectId)
@@ -145,13 +183,28 @@ public class AuthService : IAuthService
                 EmailConfirmed = true,
                 ReferralCode = GenerateReferralCode(fullName)
             };
-            await _userManager.CreateAsync(user);
-            await _userManager.AddToRoleAsync(user, "Customer");
+
+            try
+            {
+                await _userManager.CreateAsync(user);
+                await _userManager.AddToRoleAsync(user, "Customer");
+            }
+            catch (DbUpdateException)
+            {
+                // Same race as RegisterAsync — two near-simultaneous first-time
+                // Google logins for the same email. Whichever request loses the
+                // race just re-fetches the row the winner created and logs into
+                // that instead of failing outright; unlike a manual registration,
+                // there's no reason to reject this one, since the person
+                // genuinely does own this Google account either way.
+                user = await _userManager.FindByEmailAsync(email)
+                    ?? throw new InvalidOperationException("Unique-email conflict on Google login, but no matching user found afterward.");
+            }
         }
 
         var roles = await _userManager.GetRolesAsync(user);
         var (token, expires) = _jwt.GenerateToken(user, roles);
-        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires));
+        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires, user.EmailConfirmed));
     }
 
     public async Task<bool> RequestOtpAsync(string phoneNumber)
@@ -193,14 +246,32 @@ public class AuthService : IAuthService
                 Email = $"{phoneNumber}@otp.peachyglamora.local",
                 ReferralCode = GenerateReferralCode(phoneNumber)
             };
-            await _userManager.CreateAsync(user);
-            await _userManager.AddToRoleAsync(user, "Customer");
+
+            try
+            {
+                await _userManager.CreateAsync(user);
+                await _userManager.AddToRoleAsync(user, "Customer");
+            }
+            catch (DbUpdateException)
+            {
+                // Same race as RegisterAsync/LoginWithGoogleAsync — two OTP
+                // verifications for the same phone number arriving close enough
+                // together that both pass the FirstOrDefaultAsync check above
+                // before either commits. An OTP code is single-use and this
+                // whole flow requires having actually received it, so this is a
+                // narrower window than the email cases, but not impossible (e.g.
+                // the same device double-submitting). Re-fetch and log into the
+                // account the winner created rather than failing outright — the
+                // phone was verified either way.
+                user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber)
+                    ?? throw new InvalidOperationException("Unique-phone conflict on OTP verify, but no matching user found afterward.");
+            }
         }
 
         await _db.SaveChangesAsync();
         var roles = await _userManager.GetRolesAsync(user);
         var (token, expires) = _jwt.GenerateToken(user, roles);
-        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires));
+        return (true, null, new AuthResponse(user.Id, user.FullName, user.Email!, token, expires, user.EmailConfirmed));
     }
 
     // Deliberately returns nothing the caller can distinguish on — the
@@ -252,6 +323,70 @@ public class AuthService : IAuthService
             var isTokenError = result.Errors.Any(e => e.Code == "InvalidToken");
             return (false, isTokenError
                 ? "This reset link is invalid or has expired. Please request a new one."
+                : string.Join("; ", result.Errors.Select(e => e.Description)));
+        }
+
+        return (true, null);
+    }
+
+    // Fire-and-forget from RegisterAsync's perspective (doesn't affect whether
+    // registration itself succeeds) — a failed send here just means the
+    // person can hit "Resend confirmation" later; SmtpEmailService already
+    // swallows its own send failures rather than throwing.
+    private async Task SendConfirmationEmailAsync(ApplicationUser user)
+    {
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+        // Same escaping reasoning as the password-reset link below — Identity's
+        // tokens contain +, /, = which aren't safe unescaped in a query string.
+        var encodedToken = Uri.EscapeDataString(token);
+        var encodedEmail = Uri.EscapeDataString(user.Email!);
+        var frontendBaseUrl = _config["Frontend:BaseUrl"] ?? "http://localhost:4200";
+        var confirmLink = $"{frontendBaseUrl}/verify-email?email={encodedEmail}&token={encodedToken}";
+
+        var html = $"""
+            <p>Hi {user.FullName},</p>
+            <p>Welcome to Peachy Glamora! Please confirm your email address by clicking the link below:</p>
+            <p><a href="{confirmLink}">Confirm your email</a></p>
+            <p>This link can only be used once. If you didn't create this account, you can safely ignore this email.</p>
+            """;
+
+        await _email.SendAsync(user.Email!, "Confirm your Peachy Glamora email", html);
+    }
+
+    // Same anti-enumeration shape as RequestPasswordResetAsync — the caller
+    // (AuthController) always returns the same generic message regardless of
+    // what happens in here, so this silently no-ops for an unknown email, a
+    // non-Email-auth account (Google/OTP — nothing to confirm), or an
+    // already-confirmed one, rather than telling the caller which case applied.
+    public async Task RequestEmailConfirmationAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null || user.AuthProvider != "Email" || user.EmailConfirmed) return;
+
+        await SendConfirmationEmailAsync(user);
+    }
+
+    public async Task<(bool, string?)> ConfirmEmailAsync(string email, string token)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+            return (false, "This confirmation link is invalid or has expired.");
+
+        // Clicking an already-used link a second time (e.g. the person double
+        // clicked, or opened the email twice) shouldn't show an error — the
+        // outcome they wanted (a confirmed email) is already true.
+        if (user.EmailConfirmed)
+            return (true, null);
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        if (!result.Succeeded)
+        {
+            // Same "translate Identity's raw error into plain language" pattern
+            // as ResetPasswordAsync's InvalidToken handling.
+            var isTokenError = result.Errors.Any(e => e.Code == "InvalidToken");
+            return (false, isTokenError
+                ? "This confirmation link is invalid or has expired. Please request a new one."
                 : string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 

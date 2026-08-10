@@ -104,7 +104,9 @@ builder.Services.AddScoped<IPaymentGatewayService, UpiQrPaymentService>();
 builder.Services.AddHttpClient<ISmsService, Msg91SmsService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IOrderNotificationService, OrderNotificationService>();
+builder.Services.AddScoped<IRestockNotificationService, RestockNotificationService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IShippingLabelPdfService, ShippingLabelPdfService>();
 // Wraps IDataProtector (already active because Identity depends on it above)
 // to encrypt/decrypt bank account numbers. Singleton is safe — IDataProtector
 // instances are thread-safe and meant to be reused, not created per-request.
@@ -138,6 +140,12 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        // See PeachyGlamora.Api.Services.UtcDateTimeConverter for why this
+        // is needed — without it, every timestamp in every API response is
+        // off by whatever the server's local timezone offset is (5:30 for
+        // IST), because SQL Server strips the "this is UTC" tag off
+        // DateTime values when EF Core reads them back.
+        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
     });
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 builder.Services.AddFluentValidationAutoValidation();
