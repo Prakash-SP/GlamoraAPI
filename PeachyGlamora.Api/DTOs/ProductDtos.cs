@@ -28,8 +28,13 @@ public record ProductListItemDto(
 public record ProductDetailDto(
     int Id, string Name, string Slug, string Description, string Sku,
     decimal Price, decimal? CompareAtPrice, decimal TaxRatePercent,
-    List<string> ImageUrls, List<ProductVariantDto> Variants,
+    List<ProductImageDto> Images, List<ProductVariantDto> Variants,
     double AverageRating, int ReviewCount, int StockQuantity);
+
+// NEW — replaces the old flat List<string> ImageUrls. ProductVariantId is
+// null for shared/general images (shown regardless of which variant is
+// selected); set for images that belong to one specific color/size.
+public record ProductImageDto(string Url, int? ProductVariantId);
 
 public record ProductVariantDto(int Id, string? Color, string? ColorHex, string? Size, decimal Price, int StockQuantity);
 
@@ -43,7 +48,8 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
 public record WishlistItemDto(
     int ProductId, string Name, string Slug, string ImageUrl,
     decimal Price, decimal? CompareAtPrice, bool InStock,
-    int? DefaultVariantId, DateTime AddedAt);
+    int? DefaultVariantId, DateTime AddedAt,
+    string? VariantColor, string? VariantSize);
 
 // Backs GET /api/reviews/featured — real, verified reviews used as homepage
 // testimonials, not admin-curated content. ProductName stands in for what a

@@ -126,7 +126,8 @@ public class ProductsController : ControllerBase
             p.Id, p.Name, p.Slug, p.Description,
             p.Variants.FirstOrDefault(v => v.IsDefault)?.Sku ?? p.Variants.First().Sku,
             p.Variants.Min(v => v.PriceOverride), p.CompareAtPrice, p.HsnTaxRate.TaxRatePercent,
-            p.Images.OrderBy(i => i.DisplayOrder).Select(i => i.Url).ToList(),
+            p.Images.OrderBy(i => i.DisplayOrder)
+                .Select(i => new ProductImageDto(i.Url, i.ProductVariantId)).ToList(),
             p.Variants.Select(v => new ProductVariantDto(v.Id, v.Color, v.ColorHex, v.Size, v.PriceOverride, v.StockQuantity)).ToList(),
             p.Reviews.Any() ? p.Reviews.Average(r => r.Rating) : 0,
             p.Reviews.Count,

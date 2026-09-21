@@ -94,6 +94,13 @@ public class ProductImage
     public string? AltText { get; set; }
     public int DisplayOrder { get; set; }
     public bool IsPrimary { get; set; }
+
+    // NEW — optional link to a specific variant (e.g. the Teal images vs the
+    // Black images of the same earring). Null = shared across every variant,
+    // which is what every existing image already is — so this is fully
+    // backward compatible, nothing needs backfilling.
+    public int? ProductVariantId { get; set; }
+    public ProductVariant? ProductVariant { get; set; }
 }
 
 public class Review
@@ -132,6 +139,13 @@ public class WishlistItem
     public int ProductId { get; set; }
     public Product Product { get; set; } = default!;
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
+
+    // NEW — which specific variant (color/size) the customer actually
+    // wishlisted. Null for wishlist rows added before this feature existed,
+    // or if no variant was selected — GetWishlist falls back to the old
+    // "any in-stock default variant" behavior in that case.
+    public int? ProductVariantId { get; set; }
+    public ProductVariant? ProductVariant { get; set; }
 }
 
 public class RecentlyViewed

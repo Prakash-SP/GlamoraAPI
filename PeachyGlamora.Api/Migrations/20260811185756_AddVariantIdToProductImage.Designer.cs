@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PeachyGlamora.Api.Data;
 
@@ -11,9 +12,11 @@ using PeachyGlamora.Api.Data;
 namespace PeachyGlamora.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811185756_AddVariantIdToProductImage")]
+    partial class AddVariantIdToProductImage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1138,9 +1141,6 @@ namespace PeachyGlamora.Api.Migrations
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ColorSnapshot")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("HsnCodeSnapshot")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1166,9 +1166,6 @@ namespace PeachyGlamora.Api.Migrations
 
                     b.Property<DateTime?>("RefundedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("SizeSnapshot")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("TaxAmountSnapshot")
                         .HasColumnType("decimal(12,2)");
@@ -1759,9 +1756,6 @@ namespace PeachyGlamora.Api.Migrations
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ProductVariantId")
-                        .HasColumnType("int");
-
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -1769,8 +1763,6 @@ namespace PeachyGlamora.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProductId");
-
-                    b.HasIndex("ProductVariantId");
 
                     b.HasIndex("UserId");
 
@@ -2188,10 +2180,6 @@ namespace PeachyGlamora.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PeachyGlamora.Api.Models.ProductVariant", "ProductVariant")
-                        .WithMany()
-                        .HasForeignKey("ProductVariantId");
-
                     b.HasOne("PeachyGlamora.Api.Models.ApplicationUser", "User")
                         .WithMany("WishlistItems")
                         .HasForeignKey("UserId")
@@ -2199,8 +2187,6 @@ namespace PeachyGlamora.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
-
-                    b.Navigation("ProductVariant");
 
                     b.Navigation("User");
                 });

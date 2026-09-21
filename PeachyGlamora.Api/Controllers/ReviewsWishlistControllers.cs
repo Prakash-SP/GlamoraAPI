@@ -90,35 +90,67 @@ public class WishlistController : ControllerBase
         var items = await _db.WishlistItems
             .Include(w => w.Product).ThenInclude(p => p.Images)
             .Include(w => w.Product).ThenInclude(p => p.Variants)
+            .Include(w => w.ProductVariant)
             .Where(w => w.UserId == UserId)
             .OrderByDescending(w => w.AddedAt)
             .Select(w => new WishlistItemDto(
                 w.Product.Id,
                 w.Product.Name,
                 w.Product.Slug,
-                w.Product.Images.Where(i => i.IsPrimary).Select(i => i.Url).FirstOrDefault()
-                    ?? w.Product.Images.Select(i => i.Url).FirstOrDefault() ?? "",
+                // Prefer a photo tagged to the SPECIFIC variant this customer
+                // wishlisted (e.g. the Teal photo), before falling back to
+                // the product's general primary/first image — same pattern
+                // as CartService's image resolution.
+                w.ProductVariantId != null
+                    ? w.Product.Images.Where(i => i.ProductVariantId == w.ProductVariantId).Select(i => i.Url).FirstOrDefault()
+                        ?? w.Product.Images.Where(i => i.IsPrimary).Select(i => i.Url).FirstOrDefault()
+                        ?? w.Product.Images.Select(i => i.Url).FirstOrDefault() ?? ""
+                    : w.Product.Images.Where(i => i.IsPrimary).Select(i => i.Url).FirstOrDefault()
+                        ?? w.Product.Images.Select(i => i.Url).FirstOrDefault() ?? "",
                 w.Product.Variants.Min(v => v.PriceOverride),
                 w.Product.CompareAtPrice,
                 w.Product.Variants.Any(v => v.StockQuantity > 0),
-                // Prefer the default variant if it's actually in stock; otherwise
-                // fall back to whichever variant does have stock; null if none do.
-                w.Product.Variants.Where(v => v.StockQuantity > 0)
-                    .OrderByDescending(v => v.IsDefault)
-                    .Select(v => (int?)v.Id)
-                    .FirstOrDefault(),
-                w.AddedAt))
+                // Prefer the exact variant the customer wishlisted, as long as
+                // it's still in stock; otherwise fall back to the previous
+                // "any in-stock default" behavior — this keeps wishlist rows
+                // added before this feature existed (ProductVariantId = null)
+                // working exactly as they did before.
+                (w.ProductVariant != null && w.ProductVariant.StockQuantity > 0)
+                    ? w.ProductVariantId
+                    : w.Product.Variants.Where(v => v.StockQuantity > 0)
+                        .OrderByDescending(v => v.IsDefault)
+                        .Select(v => (int?)v.Id)
+                        .FirstOrDefault(),
+                w.AddedAt,
+                w.ProductVariant != null ? w.ProductVariant.Color : null,
+                w.ProductVariant != null ? w.ProductVariant.Size : null))
             .ToListAsync();
 
         return Ok(items);
     }
 
     [HttpPost("{productId:int}")]
-    public async Task<IActionResult> Add(int productId)
+    public async Task<IActionResult> Add(int productId, [FromQuery] int? variantId)
     {
-        if (!await _db.WishlistItems.AnyAsync(w => w.UserId == UserId && w.ProductId == productId))
+        // Guard against a variant id belonging to a DIFFERENT product being
+        // sent by mistake — same check used for image tagging.
+        if (variantId.HasValue &&
+            !await _db.ProductVariants.AnyAsync(v => v.Id == variantId && v.ProductId == productId))
+            return BadRequest(new { error = "That variant does not belong to this product." });
+
+        var existing = await _db.WishlistItems.FirstOrDefaultAsync(w => w.UserId == UserId && w.ProductId == productId);
+        if (existing == null)
         {
-            _db.WishlistItems.Add(new WishlistItem { UserId = UserId, ProductId = productId });
+            _db.WishlistItems.Add(new WishlistItem { UserId = UserId, ProductId = productId, ProductVariantId = variantId });
+            await _db.SaveChangesAsync();
+        }
+        else if (variantId.HasValue && existing.ProductVariantId != variantId)
+        {
+            // Already wishlisted (e.g. under a different variant) — update
+            // which variant is recorded rather than silently ignoring the
+            // new selection. Wishlist stays product-level/one-row-per-product,
+            // so re-wishlisting under a different color just retags it.
+            existing.ProductVariantId = variantId;
             await _db.SaveChangesAsync();
         }
         return Ok();

@@ -16,6 +16,18 @@ public class AdminOrdersController : ControllerBase
     private readonly IOrderNotificationService _notifications;
     private readonly IInvoicePdfService _invoicePdf;
     private readonly IShippingLabelPdfService _shippingLabelPdf;
+
+    // NEW — " (Teal · Free)" style suffix built from an item's snapshot
+    // fields, or "" if neither is set. Used anywhere an item name is
+    // rendered as plain text (status-history notes) rather than a separate
+    // JSON field a frontend can style itself.
+    private static string VariantSuffix(OrderItem item)
+    {
+        var parts = new[] { item.ColorSnapshot, item.SizeSnapshot }.Where(p => !string.IsNullOrWhiteSpace(p));
+        var joined = string.Join(" · ", parts);
+        return string.IsNullOrEmpty(joined) ? "" : $" ({joined})";
+    }
+
     public AdminOrdersController(AppDbContext db, IOrderNotificationService notifications,
         IInvoicePdfService invoicePdf, IShippingLabelPdfService shippingLabelPdf)
     {
@@ -62,6 +74,8 @@ public class AdminOrdersController : ControllerBase
                 {
                     i.Id,
                     i.ProductNameSnapshot,
+                    i.ColorSnapshot,
+                    i.SizeSnapshot,
                     i.UnitPriceSnapshot,
                     i.Quantity,
                     i.IsCancelled,
@@ -497,8 +511,8 @@ public class AdminOrdersController : ControllerBase
             OrderId = orderId,
             Status = allCancelled ? OrderStatus.Cancelled : order.Status,
             Note = (result.PaymentReceived
-                ? $"Item \"{item.ProductNameSnapshot}\" (qty {item.Quantity}) cancelled by admin. Reason: {dto.Reason}. Refund of ₹{result.RefundAmount:0.00} initiated."
-                : $"Item \"{item.ProductNameSnapshot}\" (qty {item.Quantity}) cancelled by admin. Reason: {dto.Reason}. No payment had been received, so no refund is due.")
+                ? $"Item \"{item.ProductNameSnapshot}{VariantSuffix(item)}\" (qty {item.Quantity}) cancelled by admin. Reason: {dto.Reason}. Refund of ₹{result.RefundAmount:0.00} initiated."
+                : $"Item \"{item.ProductNameSnapshot}{VariantSuffix(item)}\" (qty {item.Quantity}) cancelled by admin. Reason: {dto.Reason}. No payment had been received, so no refund is due.")
               + (allCancelled ? " All items are now cancelled — order marked Cancelled." : ""),
         });
 
@@ -548,6 +562,8 @@ public class AdminReturnsController : ControllerBase
             {
                 r.OrderItem.Id,
                 r.OrderItem.ProductNameSnapshot,
+                r.OrderItem.ColorSnapshot,
+                r.OrderItem.SizeSnapshot,
                 r.OrderItem.Quantity,
                 Order = new
                 {

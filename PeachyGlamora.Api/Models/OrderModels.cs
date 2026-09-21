@@ -153,6 +153,13 @@ public class OrderItem
 
     // Snapshot fields so historical orders stay accurate even if the product changes later
     public string ProductNameSnapshot { get; set; } = default!;
+    // NEW — same historical-accuracy reasoning as ProductNameSnapshot above:
+    // without these, every email/order-view/admin-note only ever shows the
+    // product name, with no way to tell which color/size was actually
+    // ordered once you're several products or restocks removed from
+    // checkout. Nullable since not every variant has a color or size.
+    public string? ColorSnapshot { get; set; }
+    public string? SizeSnapshot { get; set; }
     public decimal UnitPriceSnapshot { get; set; }
     public int Quantity { get; set; }
 

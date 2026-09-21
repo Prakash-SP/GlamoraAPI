@@ -71,6 +71,8 @@ public class OrdersController : ControllerBase
                 {
                     i.Id,
                     i.ProductNameSnapshot,
+                    i.ColorSnapshot,
+                    i.SizeSnapshot,
                     i.UnitPriceSnapshot,
                     i.Quantity
                 }),

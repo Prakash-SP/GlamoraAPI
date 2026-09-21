@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PeachyGlamora.Api.Data;
+using PeachyGlamora.Api.Models;
 
 namespace PeachyGlamora.Api.Services;
 
@@ -51,6 +52,17 @@ public class OrderNotificationService : IOrderNotificationService
     // next to this link, and the customer pastes it in themselves.
     private const string IndiaPostTrackingUrl = "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx";
 
+    // NEW — " · Teal · Free" style suffix built from the snapshot fields, or
+    // "" if the variant had neither a color nor a size. Centralized here so
+    // every email template below shows this consistently rather than each
+    // building its own ad-hoc string.
+    private static string VariantLabel(OrderItem item)
+    {
+        var parts = new[] { item.ColorSnapshot, item.SizeSnapshot }.Where(p => !string.IsNullOrWhiteSpace(p));
+        var joined = string.Join(" · ", parts);
+        return string.IsNullOrEmpty(joined) ? "" : $" · {joined}";
+    }
+
     public OrderNotificationService(
         AppDbContext db, IEmailService email, ISmsService sms, IConfiguration config, ILogger<OrderNotificationService> logger)
     {
@@ -73,7 +85,7 @@ public class OrderNotificationService : IOrderNotificationService
 
         var itemRows = string.Join("", order.Items.Select(i => $@"
             <tr>
-              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8;'>{System.Net.WebUtility.HtmlEncode(i.ProductNameSnapshot)} × {i.Quantity}</td>
+              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8;'>{System.Net.WebUtility.HtmlEncode(i.ProductNameSnapshot)}{VariantLabel(i)} × {i.Quantity}</td>
               <td style='padding:8px 0; border-bottom:1px solid #F0E4D8; text-align:right;'>₹{i.UnitPriceSnapshot * i.Quantity:0.00}</td>
             </tr>"));
 
@@ -146,7 +158,7 @@ public class OrderNotificationService : IOrderNotificationService
 
         var itemRows = string.Join("", order.Items.Select(i => $@"
             <tr>
-              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8;'>{System.Net.WebUtility.HtmlEncode(i.ProductNameSnapshot)} × {i.Quantity}</td>
+              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8;'>{System.Net.WebUtility.HtmlEncode(i.ProductNameSnapshot)}{VariantLabel(i)} × {i.Quantity}</td>
               <td style='padding:8px 0; border-bottom:1px solid #F0E4D8; text-align:right;'>₹{i.UnitPriceSnapshot * i.Quantity:0.00}</td>
             </tr>"));
 
@@ -356,7 +368,7 @@ public class OrderNotificationService : IOrderNotificationService
             var tag = isCancelledRow ? " <span style='text-decoration:none; font-size:10.5px; font-weight:700; background:#FBE3DF; color:#B8524A; padding:2px 8px; border-radius:999px;'>Cancelled</span>" : "";
             return $@"
             <tr>
-              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8; {rowStyle}'>{System.Net.WebUtility.HtmlEncode(i.ProductNameSnapshot)} × {i.Quantity}{tag}</td>
+              <td style='padding:8px 0; border-bottom:1px solid #F0E4D8; {rowStyle}'>{System.Net.WebUtility.HtmlEncode(i.ProductNameSnapshot)}{VariantLabel(i)} × {i.Quantity}{tag}</td>
               <td style='padding:8px 0; border-bottom:1px solid #F0E4D8; text-align:right; {rowStyle}'>₹{i.UnitPriceSnapshot * i.Quantity:0.00}</td>
             </tr>";
         }));
@@ -381,7 +393,7 @@ public class OrderNotificationService : IOrderNotificationService
 
           <h3 style="font-size:14px; margin-bottom:6px;">Cancelled Item</h3>
           <div style="background:#FBE3DF; border:1px solid #F0C4BC; border-radius:12px; padding:16px; margin-bottom:18px;">
-            <strong>{System.Net.WebUtility.HtmlEncode(cancelledItem.ProductNameSnapshot)}</strong> × {cancelledItem.Quantity}
+            <strong>{System.Net.WebUtility.HtmlEncode(cancelledItem.ProductNameSnapshot)}</strong>{VariantLabel(cancelledItem)} × {cancelledItem.Quantity}
             <div style="font-size:13px; color:#6E5147; margin-top:6px;">
               Reason: {System.Net.WebUtility.HtmlEncode(reason)}
             </div>
@@ -419,7 +431,7 @@ public class OrderNotificationService : IOrderNotificationService
 
         if (!string.IsNullOrWhiteSpace(order.User.PhoneNumber))
         {
-            var sms = $"Hi {order.User.FullName.Split(' ')[0]}, '{cancelledItem.ProductNameSnapshot}' from order {order.OrderNumber} " +
+            var sms = $"Hi {order.User.FullName.Split(' ')[0]}, '{cancelledItem.ProductNameSnapshot}{VariantLabel(cancelledItem)}' from order {order.OrderNumber} " +
                       $"(status: {order.Status}) was cancelled. Reason: {reason}. " +
                       (paymentReceived ? $"Refund of Rs.{refundAmount:0} will be processed. " : "") +
                       $"Questions? WhatsApp us on {SupportWhatsApp} or email {SupportEmail}.";

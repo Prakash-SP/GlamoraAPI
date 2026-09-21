@@ -56,7 +56,13 @@ public class CartService : ICartService
 
         var dtoItems = items.Select(c => new CartItemDto(
             c.Id, c.ProductVariantId, c.ProductVariant.Product.Name,
-            c.ProductVariant.Product.Images.FirstOrDefault(i => i.IsPrimary)?.Url
+            // Prefer a photo tagged to THIS variant (e.g. the Teal photo when
+            // a Teal variant is in the cart) before falling back to the
+            // product's general primary/first image. Without this, every
+            // cart line showed the same default-variant photo regardless of
+            // which color/size was actually added.
+            c.ProductVariant.Product.Images.FirstOrDefault(i => i.ProductVariantId == c.ProductVariantId)?.Url
+                ?? c.ProductVariant.Product.Images.FirstOrDefault(i => i.IsPrimary)?.Url
                 ?? c.ProductVariant.Product.Images.FirstOrDefault()?.Url ?? "",
             c.ProductVariant.Color, c.ProductVariant.Size,
             c.ProductVariant.PriceOverride, c.Quantity, c.ProductVariant.StockQuantity

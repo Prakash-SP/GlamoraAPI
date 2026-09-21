@@ -31,7 +31,7 @@ public class AdminProductsController : ControllerBase
     public record VariantUpsertDto(string Sku, string? Color, string? ColorHex, string? Size,
         decimal PriceOverride, int StockQuantity, bool IsDefault);
 
-    public record ImageUpsertDto(string Url, string? AltText, int DisplayOrder, bool IsPrimary);
+    public record ImageUpsertDto(string Url, string? AltText, int DisplayOrder, bool IsPrimary, int? ProductVariantId);
 
     // Admin grid: paginated, includes inactive/out-of-stock products unlike the public endpoint.
     [HttpGet]
@@ -100,7 +100,8 @@ public class AdminProductsController : ControllerBase
                     i.Url,
                     i.AltText,
                     i.DisplayOrder,
-                    i.IsPrimary
+                    i.IsPrimary,
+                    i.ProductVariantId
                 }),
             })
             .FirstOrDefaultAsync();
@@ -346,11 +347,61 @@ public class AdminProductsController : ControllerBase
     public async Task<IActionResult> AddImage(int id, ImageUpsertDto dto)
     {
         if (!await _db.Products.AnyAsync(p => p.Id == id)) return NotFound();
-        var image = new ProductImage { ProductId = id, Url = dto.Url, AltText = dto.AltText, DisplayOrder = dto.DisplayOrder, IsPrimary = dto.IsPrimary };
+
+        // Guard against a variant id that belongs to a DIFFERENT product being
+        // sent by mistake (e.g. a stale form) — would otherwise silently tag
+        // this image against someone else's variant.
+        if (dto.ProductVariantId.HasValue &&
+            !await _db.ProductVariants.AnyAsync(v => v.Id == dto.ProductVariantId && v.ProductId == id))
+            return BadRequest(new { error = "That variant does not belong to this product." });
+
+        var image = new ProductImage
+        {
+            ProductId = id,
+            Url = dto.Url,
+            AltText = dto.AltText,
+            DisplayOrder = dto.DisplayOrder,
+            IsPrimary = dto.IsPrimary,
+            ProductVariantId = dto.ProductVariantId,
+        };
         _db.ProductImages.Add(image);
         await _db.SaveChangesAsync();
 
-        return Ok(new { image.Id, image.Url, image.AltText, image.DisplayOrder, image.IsPrimary });
+        return Ok(new { image.Id, image.Url, image.AltText, image.DisplayOrder, image.IsPrimary, image.ProductVariantId });
+    }
+
+    // NEW — lets an admin fix a mis-tagged image's variant assignment (or
+    // its alt text / display order / primary flag) without deleting and
+    // re-adding it.
+    [HttpPut("images/{imageId:int}")]
+    public async Task<IActionResult> UpdateImage(int imageId, ImageUpsertDto dto)
+    {
+        var image = await _db.ProductImages.FindAsync(imageId);
+        if (image == null) return NotFound();
+
+        if (dto.ProductVariantId.HasValue &&
+            !await _db.ProductVariants.AnyAsync(v => v.Id == dto.ProductVariantId && v.ProductId == image.ProductId))
+            return BadRequest(new { error = "That variant does not belong to this product." });
+
+        image.Url = dto.Url;
+        image.AltText = dto.AltText;
+        image.DisplayOrder = dto.DisplayOrder;
+        image.IsPrimary = dto.IsPrimary;
+        image.ProductVariantId = dto.ProductVariantId;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { image.Id, image.Url, image.AltText, image.DisplayOrder, image.IsPrimary, image.ProductVariantId });
+    }
+
+    // NEW — there was previously no way to remove an image once added.
+    [HttpDelete("images/{imageId:int}")]
+    public async Task<IActionResult> DeleteImage(int imageId)
+    {
+        var image = await _db.ProductImages.FindAsync(imageId);
+        if (image == null) return NotFound();
+        _db.ProductImages.Remove(image);
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Image removed." });
     }
 
     private static Product Map(Product p, ProductUpsertDto dto)

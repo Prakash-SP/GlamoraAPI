@@ -33,7 +33,7 @@ public class InvoicePdfService : IInvoicePdfService
     private const string CompanyEmail = "peachyglamora@gmail.com";
     private const string CompanyPhone = "9021559122";
 
-    private record InvoiceLineItem(string ProductName, decimal UnitPrice, int Quantity);
+    private record InvoiceLineItem(string ProductName, string? ColorSnapshot, string? SizeSnapshot, decimal UnitPrice, int Quantity);
 
     private record InvoiceData(
         string OrderNumber,
@@ -98,7 +98,7 @@ public class InvoicePdfService : IInvoicePdfService
         o.TotalAmount,
         o.CouponCode,
         o.Items
-            .Select(i => new InvoiceLineItem(i.ProductNameSnapshot, i.UnitPriceSnapshot, i.Quantity))
+            .Select(i => new InvoiceLineItem(i.ProductNameSnapshot, i.ColorSnapshot, i.SizeSnapshot, i.UnitPriceSnapshot, i.Quantity))
             .ToList());
 
     private static byte[] Render(InvoiceData d)
@@ -177,7 +177,14 @@ public class InvoicePdfService : IInvoicePdfService
 
                         foreach (var item in d.Items)
                         {
-                            table.Cell().PaddingVertical(4).Text(item.ProductName);
+                            var variantLabel = string.Join(" · ", new[] { item.ColorSnapshot, item.SizeSnapshot }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+                            table.Cell().PaddingVertical(4).Column(c =>
+                            {
+                                c.Item().Text(item.ProductName);
+                                if (!string.IsNullOrEmpty(variantLabel))
+                                    c.Item().Text(variantLabel).FontSize(8).FontColor(Colors.Grey.Darken1);
+                            });
                             table.Cell().PaddingVertical(4).AlignCenter().Text(item.Quantity.ToString());
                             table.Cell().PaddingVertical(4).AlignRight().Text($"₹{item.UnitPrice:N2}");
                             table.Cell().PaddingVertical(4).AlignRight().Text($"₹{item.UnitPrice * item.Quantity:N2}");

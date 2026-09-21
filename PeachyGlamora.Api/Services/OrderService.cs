@@ -90,6 +90,8 @@ public class OrderService : IOrderService
             {
                 ProductVariantId = item.ProductVariantId,
                 ProductNameSnapshot = item.ProductVariant.Product.Name,
+                ColorSnapshot = item.ProductVariant.Color,
+                SizeSnapshot = item.ProductVariant.Size,
                 UnitPriceSnapshot = item.ProductVariant.PriceOverride,
                 Quantity = item.Quantity,
                 HsnCodeSnapshot = item.ProductVariant.Product.HsnTaxRate.HsnCode,
